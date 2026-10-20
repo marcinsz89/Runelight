@@ -16,8 +16,8 @@ import android.content.pm.PackageManager
 import android.database.ContentObserver
 import android.provider.Settings
 import android.content.pm.ServiceInfo
-import android.graphics.BitmapFactory
 import android.graphics.Color
+import android.graphics.BitmapFactory
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.BatteryManager
@@ -36,6 +36,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.moonbench.bifrost.MainActivity
+import com.moonbench.bifrost.RunelightActivity
 import com.moonbench.bifrost.R
 import com.moonbench.bifrost.plugins.PluginPrefs
 import com.moonbench.bifrost.plugins.LivePolicy
@@ -156,6 +157,10 @@ class LEDService : Service() {
         const val PREF_AMBILIGHT_USE_MEDIA_PROJECTION = "ambilight_use_media_projection"
         const val DEFAULT_AMBILIGHT_USE_MEDIA_PROJECTION = true
         var isRunning = false
+        var runningEffect: LedAnimationType? = null
+            private set
+        var outputAvailable: Boolean? = null
+            private set
     }
 
     private var mediaProjection: MediaProjection? = null
@@ -212,6 +217,10 @@ class LEDService : Service() {
     @Volatile private var mirrorMode = false
     private var mirrorRunningDisplayId = Display.INVALID_DISPLAY
     private var activeAnimationType: LedAnimationType? = null
+        set(value) {
+            field = value
+            runningEffect = value
+        }
     private var lastProjectionResultCode: Int = Activity.RESULT_OK
     private var lastProjectionData: Intent? = null
     private var isDevicePluggedIn: Boolean = false
@@ -407,6 +416,7 @@ class LEDService : Service() {
         createNotificationChannel()
         mediaProjectionManager = getSystemService(MediaProjectionManager::class.java)
         ledController = LedController()
+        outputAvailable = ledController.isAvailable
         registerBatteryStateReceiver()
         refreshBatteryStateSnapshot()
         mountScreenBrightnessObserver()
@@ -414,6 +424,11 @@ class LEDService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (!ledController.isAvailable) {
+            outputAvailable = false
+            stopSelf()
+            return START_NOT_STICKY
+        }
         if (intent == null) {
             stopSelf()
             return START_NOT_STICKY
@@ -1286,18 +1301,16 @@ class LEDService : Service() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
-        val mainIntent = Intent(this, MainActivity::class.java).apply {
+        val mainIntent = Intent(this, RunelightActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
         val mainPendingIntent =
             PendingIntent.getActivity(this, 0, mainIntent, PendingIntent.FLAG_IMMUTABLE)
 
         return Notification.Builder(this, CHANNEL_ID)
-            .setContentTitle("BIFROST is open")
-            .setContentText("Tap to tune")
-            .setSubText(resolveNotificationSubText())
-            .setSmallIcon(R.drawable.ic_notification_small)
-            .setLargeIcon(BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher_foreground))
+            .setContentTitle(getString(R.string.runelight_notification_title))
+            .setContentText(getString(R.string.runelight_notification_body))
+            .setSmallIcon(R.drawable.ic_runelight)
             .setContentIntent(mainPendingIntent)
             .addAction(android.R.drawable.ic_delete, "Stop", stopPendingIntent)
             .setOnlyAlertOnce(true)

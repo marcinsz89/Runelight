@@ -1,5 +1,6 @@
 *.iml
 .gradle
+.kotlin/
 /local.properties
 /.idea/caches
 /.idea/libraries
@@ -25,3 +26,6 @@ keystore.properties
 
 # Build outputs copied next to the module (Android Studio "locate" folder)
 app/release/
+
+# Local QA evidence: device logs, APK copies and private diagnostic notes
+/local-test-results/

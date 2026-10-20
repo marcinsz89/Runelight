@@ -1,0 +1,80 @@
+<resources>
+    <color name="runelight_bg">#F3F2F7</color>
+    <color name="runelight_card">#FFFFFF</color>
+    <color name="runelight_text">#24222D</color>
+    <color name="runelight_secondary">#686473</color>
+    <color name="runelight_accent">#7053C7</color>
+    <color name="runelight_selected">#E5DEF3</color>
+
+    <style name="Theme.Runelight" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/runelight_accent</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorSurface">@color/runelight_card</item>
+        <item name="colorOnSurface">@color/runelight_text</item>
+        <item name="android:colorBackground">@color/runelight_bg</item>
+        <item name="android:statusBarColor">@color/runelight_bg</item>
+        <item name="android:navigationBarColor">@color/runelight_bg</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:windowActionModeOverlay">true</item>
+    </style>
+    <style name="RunelightCard" parent="Widget.Material3.CardView.Filled">
+        <item name="cardBackgroundColor">@color/runelight_card</item>
+        <item name="cardCornerRadius">16dp</item>
+        <item name="cardElevation">0dp</item>
+        <item name="strokeWidth">0dp</item>
+    </style>
+    <style name="RunelightLabel">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textColor">@color/runelight_secondary</item>
+        <item name="android:textSize">13sp</item>
+    </style>
+    <style name="RunelightEffect" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="backgroundTint">@color/runelight_effect_background</item>
+        <item name="android:textColor">@color/runelight_text</item>
+        <item name="strokeWidth">0dp</item>
+        <item name="cornerRadius">10dp</item>
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">48dp</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:paddingLeft">4dp</item>
+        <item name="android:paddingRight">4dp</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+    </style>
+
+    <string name="runelight_lighting">Lighting</string>
+    <string name="runelight_stopped">Stopped</string>
+    <string name="runelight_start">Start lighting</string>
+    <string name="runelight_stop">Stop lighting</string>
+    <string name="runelight_starting">Starting…</string>
+    <string name="runelight_on">On</string>
+    <string name="runelight_output_unavailable">LED control unavailable</string>
+    <string name="runelight_start_failed">Couldn’t start lighting. Try again.</string>
+    <string name="runelight_ambient">Ambient</string>
+    <string name="runelight_solid">Solid</string>
+    <string name="runelight_rainbow">Rainbow</string>
+    <string name="runelight_breathing">Breathing</string>
+    <string name="runelight_pulse">Pulse</string>
+    <string name="runelight_brightness">Brightness</string>
+    <string name="runelight_percent">%1$d%%</string>
+    <string name="runelight_sound">React to sound</string>
+    <string name="runelight_not_available">Not available in this build</string>
+    <string name="runelight_ambient_pending">Ambient capture is being rebuilt.</string>
+    <string name="runelight_appearance">Switch light or dark appearance</string>
+    <string name="runelight_appearance_symbol">◐</string>
+    <string name="runelight_left_color">Left color</string>
+    <string name="runelight_right_color">Right color</string>
+    <string name="runelight_red">Red</string>
+    <string name="runelight_green">Green</string>
+    <string name="runelight_blue">Blue</string>
+    <string name="runelight_apply_color">Apply color</string>
+    <string name="runelight_cancel_color">Cancel</string>
+    <string name="runelight_speed">Speed</string>
+    <string name="runelight_notification_title">Lighting is active</string>
+    <string name="runelight_notification_body">Tap to open Runelight</string>
+</resources>

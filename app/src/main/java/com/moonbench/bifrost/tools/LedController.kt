@@ -13,6 +13,7 @@ class LedController {
     }
 
     private val pServerBinder: IBinder?
+    val isAvailable: Boolean get() = pServerBinder?.isBinderAlive == true
     private val lock = ReentrantLock()
 
     private var lastCommand: String? = null

@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Bifrost</string>
+    <string name="app_name">Runelight</string>
     <string name="delete_preset_title">Delete preset</string>
     <string name="delete_preset_subtitle">Delete "%1$s"?</string>
     <string name="delete_preset_subtitle_placeholder">Delete this preset?</string>

@@ -1,0 +1,280 @@
+<style>
+#runelight-layouts { width:100%; }
+#runelight-layouts [data-variant] { min-height:584px; padding:18px 8px; box-sizing:border-box; }
+#runelight-layouts .rl-app { --rl-bg:#111016; --rl-surface:#1e1c27; --rl-raised:#2c2937; --rl-text:#f7f5fc; --rl-muted:#b2adbf; --rl-line:#36313f; --rl-accent:#8c55f6; --rl-accent-dark:#4f2bac; --rl-on-accent:#fff; --rl-radius:24px; width:100%; max-width:620px; min-height:540px; aspect-ratio:31/27; padding:18px; margin:0 auto; box-sizing:border-box; border-radius:10px; background:var(--rl-bg); color:var(--rl-text); font:400 15px/1.35 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; position:relative; }
+#runelight-layouts .rl-app[data-appearance="Light"] { --rl-bg:#f5f2fa; --rl-surface:#fff; --rl-raised:#eae5f2; --rl-text:#221b30; --rl-muted:#6d637b; --rl-line:#dcd4e6; }
+#runelight-layouts .rl-app * { box-sizing:border-box; min-width:0; }
+#runelight-layouts .rl-app [hidden] { display:none !important; }
+#runelight-layouts .rl-app button,#runelight-layouts .rl-app select,#runelight-layouts .rl-app input { font:inherit; color:inherit; }
+#runelight-layouts .rl-app button { border:0; }
+#runelight-layouts .rl-app button:focus-visible,#runelight-layouts .rl-app select:focus-visible,#runelight-layouts .rl-app input:focus-visible { outline:3px solid var(--rl-accent); outline-offset:3px; }
+#runelight-layouts .rl-header { height:44px; display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--rl-line); margin-bottom:12px; padding-bottom:10px; }
+#runelight-layouts .rl-brand { display:flex; align-items:center; gap:9px; font-size:23px; font-weight:600; letter-spacing:-.6px; margin-right:auto; }
+#runelight-layouts .rl-brand i,#runelight-layouts .rl-brand svg { color:var(--rl-accent); width:22px; height:22px; }
+#runelight-layouts .rl-icon-button { background:transparent; width:44px; height:44px; border-radius:12px; display:grid; place-items:center; flex-shrink:0; }
+#runelight-layouts .rl-icon-button svg { width:19px; height:19px; }
+#runelight-layouts .rl-state { font-size:12px; display:flex; align-items:center; gap:6px; color:var(--rl-muted); white-space:nowrap; }
+#runelight-layouts .rl-state:before { content:''; width:6px; height:6px; background:var(--rl-accent); border-radius:50%; }
+#runelight-layouts .rl-stack { display:grid; gap:10px; }
+#runelight-layouts .rl-card { border-radius:var(--rl-radius); background:var(--rl-surface); padding:16px; min-width:0; }
+#runelight-layouts .rl-label { display:block; font-size:11px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; color:var(--rl-muted); }
+#runelight-layouts .rl-sub { font-size:12px; color:var(--rl-muted); }
+#runelight-layouts .rl-row { display:flex; align-items:center; justify-content:space-between; gap:10px; min-width:0; }
+#runelight-layouts .rl-hero { display:grid; grid-template-columns:1fr 1.2fr; gap:10px; }
+#runelight-layouts .rl-power { background:linear-gradient(140deg,var(--rl-accent),var(--rl-accent-dark)); color:var(--rl-on-accent) !important; min-height:136px; text-align:left; display:flex; flex-direction:column; justify-content:space-between; padding:17px 20px; }
+#runelight-layouts .rl-power .rl-label,#runelight-layouts .rl-power .rl-sub { color:var(--rl-on-accent); opacity:.8; }
+#runelight-layouts .rl-power .rl-power-top { display:flex; align-items:center; justify-content:space-between; }
+#runelight-layouts .rl-power svg { width:22px; height:22px; }
+#runelight-layouts .rl-power .rl-power-word { font-size:40px; line-height:1.05; font-weight:600; letter-spacing:-1px; }
+#runelight-layouts .rl-power[data-on="false"] { background:var(--rl-raised); color:var(--rl-text) !important; }
+#runelight-layouts .rl-power[data-on="false"] .rl-label,#runelight-layouts .rl-power[data-on="false"] .rl-sub { color:var(--rl-muted); }
+#runelight-layouts .rl-effect-hero { display:flex; flex-direction:column; justify-content:space-between; gap:8px; }
+#runelight-layouts .rl-look-name { font-size:27px; font-weight:600; letter-spacing:-.6px; }
+#runelight-layouts .rl-rings { display:flex; align-items:center; gap:16px; }
+#runelight-layouts .rl-ring { --rl-ring-color:#a485ff; width:49px; height:49px; border:5px solid var(--rl-ring-color); border-radius:50%; background:var(--rl-bg); box-shadow:0 0 17px color-mix(in srgb,var(--rl-ring-color) 20%,transparent); position:relative; }
+#runelight-layouts .rl-ring:after { content:''; position:absolute; inset:7px; border:1px solid var(--rl-line); border-radius:50%; }
+#runelight-layouts .rl-ring-wrap { display:grid; justify-items:center; gap:6px; }
+#runelight-layouts .rl-ring-wrap span { font-size:11px; color:var(--rl-muted); }
+#runelight-layouts .rl-effects { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:6px; }
+#runelight-layouts .rl-effects button { min-height:44px; border-radius:14px; font-size:12px; background:var(--rl-surface); color:var(--rl-muted); padding:4px; }
+#runelight-layouts .rl-effects button[aria-pressed="true"] { background:var(--rl-accent); color:var(--rl-on-accent); }
+#runelight-layouts .rl-controls { display:grid; grid-template-columns:1fr 1.2fr; gap:10px; }
+#runelight-layouts .rl-control-card { min-height:110px; }
+#runelight-layouts .rl-value { font-size:28px; letter-spacing:-1px; font-weight:500; }
+#runelight-layouts .rl-value small { font-size:15px; letter-spacing:0; }
+#runelight-layouts input[type="range"] { accent-color:var(--rl-accent); width:100%; height:24px; margin:7px 0 0; display:block; }
+#runelight-layouts .rl-switch { display:grid; place-items:center; min-width:48px; height:44px; background:transparent; padding:0; }
+#runelight-layouts .rl-switch-track { width:42px; height:26px; border-radius:20px; background:var(--rl-raised); padding:4px; display:block; }
+#runelight-layouts .rl-switch-track:after { content:''; display:block; width:18px; height:18px; border-radius:50%; background:var(--rl-muted); }
+#runelight-layouts .rl-switch[aria-checked="true"] .rl-switch-track { background:var(--rl-accent); }
+#runelight-layouts .rl-switch[aria-checked="true"] .rl-switch-track:after { transform:translateX(16px); background:var(--rl-on-accent); }
+#runelight-layouts .rl-sound-title { display:flex; align-items:center; gap:7px; font-size:14px; font-weight:500; }
+#runelight-layouts .rl-sound-title svg { width:18px; height:18px; color:var(--rl-accent); }
+#runelight-layouts .rl-sound-line { height:35px; display:flex; align-items:center; }
+#runelight-layouts .rl-sound-line .rl-sub { width:100%; }
+#runelight-layouts .rl-sensitivity { display:flex; align-items:center; gap:7px; width:100%; }
+#runelight-layouts .rl-sensitivity input { margin:0; min-width:30px; }
+#runelight-layouts .rl-sensitivity .rl-sub { width:auto; white-space:nowrap; font-size:11px; }
+#runelight-layouts .rl-context { display:grid; grid-template-columns:1fr 1fr; gap:18px; min-height:73px; padding:12px 16px; }
+#runelight-layouts .rl-segments { display:flex; background:var(--rl-raised); border-radius:10px; padding:3px; margin-top:5px; }
+#runelight-layouts .rl-segments button { flex:1; min-height:30px; border-radius:8px; background:transparent; font-size:12px; color:var(--rl-muted); }
+#runelight-layouts .rl-segments button[aria-pressed="true"] { background:var(--rl-surface); color:var(--rl-text); }
+#runelight-layouts .rl-context .rl-label { font-size:11px; letter-spacing:1.1px; }
+#runelight-layouts .rl-context input[type="range"] { margin-top:5px; }
+#runelight-layouts .rl-color-fields { display:flex; gap:12px; align-items:center; padding-top:6px; }
+#runelight-layouts input[type="color"] { appearance:none; width:44px; height:30px; padding:0; background:none; border:0; border-radius:8px; }
+#runelight-layouts .rl-footer { padding-top:8px; display:flex; align-items:center; justify-content:center; gap:6px; color:var(--rl-muted); font-size:11px; }
+#runelight-layouts .rl-footer svg { width:12px; height:12px; }
+#runelight-layouts .rl-small-power { min-height:40px; display:flex; align-items:center; gap:7px; padding:8px 15px; border-radius:14px; background:var(--rl-accent); color:var(--rl-on-accent) !important; font-weight:500; }
+#runelight-layouts .rl-small-power svg { width:16px; height:16px; }
+#runelight-layouts .rl-select { width:100%; min-height:44px; border:0; border-radius:12px; background:var(--rl-raised); padding:8px 10px; margin-top:7px; color:var(--rl-text); }
+#runelight-layouts .rl-compact-preview { min-height:88px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+#runelight-layouts .rl-compact .rl-stack { gap:6px; }
+#runelight-layouts .rl-compact-preview { padding:12px 16px; }
+#runelight-layouts .rl-compact-preview .rl-rings { gap:12px; }
+#runelight-layouts .rl-compact-preview .rl-ring { width:43px; height:43px; border-width:4px; }
+#runelight-layouts .rl-compact-preview .rl-look-name { font-size:22px; }
+#runelight-layouts .rl-compact-fields { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+#runelight-layouts .rl-compact-fields .rl-card { padding:12px 15px; }
+#runelight-layouts .rl-full-brightness { padding:12px 16px; }
+#runelight-layouts .rl-full-brightness .rl-value { font-size:22px; }
+#runelight-layouts .rl-compact-sound { padding:12px 16px; min-height:92px; }
+#runelight-layouts .rl-compact-sound .rl-sensitivity { max-width:270px; margin-left:auto; }
+#runelight-layouts .rl-double-slider { display:grid; grid-template-columns:1fr 1fr; gap:22px; padding:12px 16px; }
+#runelight-layouts .rl-double-slider .rl-label { letter-spacing:.5px; }
+#runelight-layouts .rl-focus .rl-header { margin-bottom:0; }
+#runelight-layouts .rl-focus-preview { display:flex; flex-direction:column; align-items:center; gap:9px; padding:10px 0 8px; }
+#runelight-layouts .rl-focus-preview .rl-rings { gap:32px; }
+#runelight-layouts .rl-focus-preview .rl-ring { width:71px; height:71px; border-width:6px; }
+#runelight-layouts .rl-focus-preview .rl-look-name { font-size:28px; margin-top:1px; }
+#runelight-layouts .rl-focus .rl-select { margin:0; background:var(--rl-surface); min-height:48px; border-radius:16px; }
+#runelight-layouts .rl-focus-controls { max-width:470px; margin:0 auto; display:grid; gap:10px; }
+#runelight-layouts .rl-focus-brightness { padding:9px 2px; }
+#runelight-layouts .rl-focus-sound { padding:10px 15px; }
+#runelight-layouts .rl-adjust { display:flex; align-items:center; justify-content:center; gap:8px; background:transparent; min-height:44px; color:var(--rl-muted) !important; }
+#runelight-layouts .rl-adjust svg { width:16px; height:16px; }
+#runelight-layouts .rl-overlay { position:absolute; inset:0; padding:18px; border-radius:10px; background:var(--rl-bg); z-index:3; display:flex; flex-direction:column; gap:16px; }
+#runelight-layouts .rl-overlay h2 { font:600 22px/1.3 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; margin:0; }
+#runelight-layouts .rl-overlay .rl-header { margin:0; }
+#runelight-layouts .rl-setting-row { padding:15px 0; border-bottom:1px solid var(--rl-line); }
+#runelight-layouts .rl-setting-row select { max-width:180px; margin:0; }
+#runelight-layouts .rl-done { background:var(--rl-accent); color:var(--rl-on-accent) !important; border-radius:16px; min-height:48px; margin-top:auto; }
+#runelight-layouts .rl-preview-note { font-size:12px; color:var(--rl-muted); }
+#runelight-layouts .rl-app { --rl-radius:18px; --rl-on-accent:#171320; }
+#runelight-layouts .rl-header { border:0; }
+#runelight-layouts .rl-brand { font-size:22px; font-weight:500; letter-spacing:-.45px; gap:10px; }
+#runelight-layouts .rl-rune { display:grid; place-items:center; width:34px; height:34px; border-radius:10px; background:var(--rl-accent); color:var(--rl-on-accent); font:400 29px/1 'Segoe UI Historic','Apple Symbols',sans-serif; flex-shrink:0; }
+#runelight-layouts .rl-label { text-transform:none; letter-spacing:.1px; font-size:12px; font-weight:500; }
+#runelight-layouts .rl-context .rl-label { letter-spacing:0; }
+#runelight-layouts .rl-power { background:var(--rl-surface); color:var(--rl-text) !important; border:1px solid color-mix(in srgb,var(--rl-accent) 40%,var(--rl-surface)); }
+#runelight-layouts .rl-power .rl-label,#runelight-layouts .rl-power .rl-sub { color:var(--rl-muted); opacity:1; }
+#runelight-layouts .rl-power svg { color:var(--rl-accent); }
+#runelight-layouts .rl-power .rl-power-word { color:var(--rl-accent); font-size:42px; font-weight:500; letter-spacing:-1.5px; }
+#runelight-layouts .rl-power[data-on="false"] { border-color:var(--rl-line); background:var(--rl-surface); }
+#runelight-layouts .rl-power[data-on="false"] .rl-power-word { color:var(--rl-muted); }
+#runelight-layouts .rl-effect-hero { background:linear-gradient(120deg,var(--rl-surface) 45%,color-mix(in srgb,var(--rl-accent) 12%,var(--rl-surface))); }
+#runelight-layouts .rl-look-name { font-weight:500; }
+#runelight-layouts .rl-effects { gap:0; background:var(--rl-surface); padding:3px; border-radius:14px; }
+#runelight-layouts .rl-effects button { background:transparent; border-radius:10px; }
+#runelight-layouts .rl-effects button[aria-pressed="true"] { background:var(--rl-raised); color:var(--rl-text); box-shadow:inset 0 -2px var(--rl-accent); }
+#runelight-layouts .rl-app[data-appearance="Light"] .rl-power .rl-power-word { color:#7652ae; }
+#runelight-layouts .rl-app[data-appearance="Light"] .rl-rune { color:#171320; }
+@media(pointer:coarse) {
+  #runelight-layouts .rl-segments button { min-height:44px; }
+  #runelight-layouts .rl-app { aspect-ratio:auto; min-height:570px; }
+  #runelight-layouts [data-variant] { min-height:620px; }
+}
+@media(max-width:480px) {
+  #runelight-layouts [data-variant] { min-height:750px; padding:12px 0; }
+  #runelight-layouts .rl-app { aspect-ratio:auto; min-height:720px; padding:14px; }
+  #runelight-layouts .rl-brand { font-size:21px; }
+  #runelight-layouts .rl-state { font-size:11px; }
+  #runelight-layouts .rl-hero { grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr); }
+  #runelight-layouts .rl-effect-hero { padding:12px; }
+  #runelight-layouts .rl-effect-hero .rl-rings { gap:8px; }
+  #runelight-layouts .rl-effect-hero .rl-ring { width:32px; height:32px; border-width:3px; }
+  #runelight-layouts .rl-effect-hero .rl-look-name { font-size:23px; }
+  #runelight-layouts .rl-effect-hero .rl-row { flex-wrap:wrap; }
+  #runelight-layouts .rl-power { padding:15px; }
+  #runelight-layouts .rl-effects { gap:4px; }
+  #runelight-layouts .rl-effects button { font-size:11px; }
+  #runelight-layouts .rl-controls { grid-template-columns:1fr; }
+  #runelight-layouts .rl-control-card { min-height:91px; }
+  #runelight-layouts .rl-context { grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; padding:12px; }
+  #runelight-layouts .rl-color-fields { flex-wrap:wrap; gap:8px; }
+  #runelight-layouts .rl-compact-preview { flex-wrap:wrap; }
+  #runelight-layouts .rl-compact-preview .rl-rings { margin-left:auto; }
+  #runelight-layouts .rl-compact-fields { grid-template-columns:1fr; }
+  #runelight-layouts .rl-focus-preview { padding:32px 0; }
+  #runelight-layouts .rl-focus-controls { gap:20px; }
+  #runelight-layouts .rl-setting-row select { max-width:140px; }
+}
+</style>
+<div id="runelight-layouts" class="viz-dotted-background" aria-label="Runelight refined Quick tiles">
+  <section data-variant="Quick tiles" aria-label="Quick tiles layout">
+    <div class="rl-app rl-tiles" data-layout="Quick tiles" aria-label="Quick tiles design">
+      <header class="rl-header"><div class="rl-brand"><span class="rl-rune" role="img" aria-label="Dagaz daylight rune">ᛞ</span>Runelight</div><span class="rl-state" data-status>Running</span><button type="button" class="rl-icon-button cursor-interaction" data-action="settings" aria-label="Settings"><i data-lucide="settings-2" aria-hidden="true"></i></button></header>
+      <div class="rl-stack">
+        <div class="rl-hero">
+          <button type="button" class="rl-card rl-power cursor-interaction" data-action="power" aria-pressed="true" aria-label="Stop lighting"><span class="rl-power-top"><i data-lucide="power" aria-hidden="true"></i><span class="rl-label">Lighting</span></span><span><span class="rl-power-word" data-power-word>On</span><span class="rl-sub" style="display:block;margin-top:5px" data-power-hint>Tap to stop</span></span></button>
+          <div class="rl-card rl-effect-hero"><div class="rl-row"><span class="rl-label">Current look</span><div class="rl-rings" aria-label="Illustrative left and right LED colors"><span class="rl-ring" data-ring="left"></span><span class="rl-ring" data-ring="right"></span></div></div><div><div class="rl-look-name" data-look-name>Ambient</div><div class="rl-sub" data-look-sub>Follows your top screen</div></div></div>
+        </div>
+        <div class="rl-effects" aria-label="Choose lighting effect"><button type="button" class="cursor-interaction" data-effect="Ambient" aria-pressed="true">Ambient</button><button type="button" class="cursor-interaction" data-effect="Solid" aria-pressed="false">Solid</button><button type="button" class="cursor-interaction" data-effect="Rainbow" aria-pressed="false">Rainbow</button><button type="button" class="cursor-interaction" data-effect="Breathing" aria-pressed="false">Breathing</button><button type="button" class="cursor-interaction" data-effect="Pulse" aria-pressed="false">Pulse</button></div>
+        <div class="rl-controls">
+          <label class="rl-card rl-control-card"><span class="rl-row"><span class="rl-label">Brightness</span><span class="rl-value"><span data-value="brightness">70</span><small>%</small></span></span><input type="range" min="0" max="100" value="70" data-field="brightness" aria-label="Brightness"></label>
+          <div class="rl-card rl-control-card"><div class="rl-row"><span class="rl-sound-title"><i data-lucide="audio-lines" aria-hidden="true"></i>React to sound</span><button type="button" role="switch" aria-checked="false" aria-label="React to sound" class="rl-switch cursor-interaction" data-action="audio"><span class="rl-switch-track"></span></button></div><div class="rl-sound-line"><span class="rl-sub" data-audio-off>Pulse with game audio</span><label class="rl-sensitivity" data-audio-on hidden><span class="rl-sub">Sensitivity</span><input type="range" min="0" max="100" value="55" data-field="sensitivity" aria-label="Sound sensitivity"><span class="rl-sub" data-value="sensitivity">55</span></label></div></div>
+        </div>
+        <div class="rl-card rl-context" data-context-slot></div>
+      </div>
+      <div class="rl-footer"><i data-lucide="check" aria-hidden="true"></i><span data-footer>Lighting continues when you close the app</span></div>
+    </div>
+  </section>
+</div>
+<template id="rl-context-ambient"><div><span class="rl-label">Capture screen</span><div class="rl-segments"><button type="button" class="cursor-interaction" data-source="Top" aria-pressed="true">Top</button><button type="button" class="cursor-interaction" data-source="Bottom" aria-pressed="false">Bottom</button></div></div><label><span class="rl-row"><span class="rl-label">Response</span><span class="rl-sub" data-value="response">50</span></span><input type="range" min="0" max="100" value="50" data-field="response" aria-label="Ambient response"></label></template>
+<template id="rl-context-color"><div><span class="rl-label">Stick colors</span><div class="rl-color-fields"><label class="rl-row"><span class="rl-sub">L</span><input type="color" value="#a485ff" data-field="left" aria-label="Left stick color"></label><label class="rl-row"><span class="rl-sub">R</span><input type="color" value="#68cbd7" data-field="right" aria-label="Right stick color"></label></div></div><label data-speed-setting><span class="rl-row"><span class="rl-label">Speed</span><span class="rl-sub" data-value="speed">40</span></span><input type="range" min="0" max="100" value="40" data-field="speed" aria-label="Animation speed"></label></template>
+<template id="rl-context-compact"><label><span class="rl-row"><span class="rl-label">Response</span><span class="rl-sub" data-value="response">50</span></span><input type="range" min="0" max="100" value="50" data-field="response" aria-label="Ambient response"></label><label><span class="rl-row"><span class="rl-label">Saturation</span><span class="rl-sub" data-value="saturation">25</span></span><input type="range" min="0" max="100" value="25" data-field="saturation" aria-label="Ambient saturation"></label></template>
+<template id="rl-settings"><div class="rl-overlay" data-overlay="settings" hidden><header class="rl-header"><h2>Settings</h2><button type="button" class="rl-icon-button cursor-interaction" style="margin-left:auto" data-action="close" aria-label="Close settings"><i data-lucide="x" aria-hidden="true"></i></button></header><div class="rl-row rl-setting-row"><span>Appearance</span><select class="rl-select" data-field="appearance" aria-label="Appearance"><option>Dark</option><option>Light</option></select></div><div class="rl-setting-row"><div class="rl-row"><span>Capture</span><span class="rl-sub">Ready · example state</span></div></div><div class="rl-setting-row"><span class="rl-label">Ambient saturation</span><input type="range" min="0" max="100" value="25" data-field="saturation" aria-label="Ambient saturation"><span class="rl-sub"><span data-value="saturation">25</span>%</span></div><div class="rl-preview-note">Interactive layout preview · illustrative LED colors</div><button type="button" class="rl-done cursor-interaction" data-action="close">Done</button></div></template>
+<template id="rl-adjust"><div class="rl-overlay" data-overlay="adjust" hidden><header class="rl-header"><h2><span data-look-name>Ambient</span> controls</h2><button type="button" class="rl-icon-button cursor-interaction" style="margin-left:auto" data-action="close" aria-label="Close effect controls"><i data-lucide="x" aria-hidden="true"></i></button></header><div class="rl-card rl-context" data-adjust-context></div><label class="rl-card" data-adjust-saturation><span class="rl-row"><span>Saturation</span><span><span data-value="saturation">25</span>%</span></span><input type="range" min="0" max="100" value="25" data-field="saturation" aria-label="Ambient saturation"></label><div class="rl-sub">Black content turns the LEDs fully off.</div><button type="button" class="rl-done cursor-interaction" data-action="close">Done</button></div></template>
+<script>
+(() => {
+  const root = document.getElementById('runelight-layouts');
+  const effects = ['Ambient','Solid','Rainbow','Breathing','Pulse'];
+  const states = {};
+  const defaults = {effect:'Ambient',on:true,audio:false,brightness:70,sensitivity:55,response:50,saturation:25,speed:40,source:'Top',left:'#a485ff',right:'#68cbd7',appearance:'Dark',accent:'#a58cde',radius:18};
+  const saved = window.openai?.widgetState?.modelContent?.layouts || {};
+  const template = id => document.getElementById(id).content.cloneNode(true);
+  function restore(name) {
+    const data = saved[name] || {};
+    const s = {...defaults,audio:name==='Compact controls'};
+    for (const key of Object.keys(defaults)) {
+      if (typeof data[key]===typeof defaults[key]) s[key]=data[key];
+    }
+    if (!effects.includes(s.effect)) s.effect='Ambient';
+    if (!['Top','Bottom'].includes(s.source)) s.source='Top';
+    if (!['Dark','Light'].includes(s.appearance)) s.appearance='Dark';
+    for (const key of ['brightness','sensitivity','response','saturation','speed']) s[key]=Math.max(0,Math.min(100,s[key]));
+    for (const key of ['left','right','accent']) if (!/^#[0-9a-f]{6}$/i.test(s[key])) s[key]=defaults[key];
+    s.radius=Math.max(12,Math.min(30,s.radius));
+    return s;
+  }
+  function persist() {
+    if (window.openai?.setWidgetState) window.openai.setWidgetState({modelContent:{layouts:states}}).catch(()=>{});
+  }
+  function populateContext(app,s) {
+    const compact=app.classList.contains('rl-compact');
+    const slot=app.querySelector('[data-context-slot]');
+    if (slot) {
+      slot.replaceChildren(template(s.effect==='Ambient' ? (compact?'rl-context-compact':'rl-context-ambient'):'rl-context-color'));
+      slot.querySelector('[data-speed-setting]')?.toggleAttribute('hidden',s.effect==='Solid');
+    }
+    const source=app.querySelector('[data-compact-source]');
+    if (source) {
+      if (s.effect==='Ambient') {
+        source.innerHTML='<span class="rl-label">Capture screen</span><div class="rl-segments"><button type="button" class="cursor-interaction" data-source="Top">Top</button><button type="button" class="cursor-interaction" data-source="Bottom">Bottom</button></div>';
+      } else {
+        source.innerHTML='<span class="rl-label">Color</span><div class="rl-color-fields"><input type="color" data-field="left" aria-label="Left stick color"><input type="color" data-field="right" aria-label="Right stick color"></div>';
+      }
+    }
+    const adjust=app.querySelector('[data-adjust-context]');
+    if (adjust) { adjust.replaceChildren(template(s.effect==='Ambient'?'rl-context-ambient':'rl-context-color')); adjust.querySelector('[data-speed-setting]')?.toggleAttribute('hidden',s.effect==='Solid'); }
+    app.querySelector('[data-adjust-saturation]')?.toggleAttribute('hidden',s.effect!=='Ambient');
+  }
+  function render(app,s) {
+    app.dataset.appearance=s.appearance;
+    app.style.setProperty('--rl-accent',s.accent);
+    app.style.setProperty('--rl-radius',s.radius+'px');
+    app.querySelectorAll('[data-look-name]').forEach(el=>el.textContent=s.effect);
+    const sub=s.effect==='Ambient' ? 'Follows your '+s.source.toLowerCase()+' screen' : ({Solid:'Your colors, held steady',Rainbow:'A smooth spectrum of color',Breathing:'A soft, steady rhythm',Pulse:'A brighter beat of color'})[s.effect];
+    app.querySelectorAll('[data-look-sub]').forEach(el=>el.textContent=sub);
+    app.querySelectorAll('[data-status]').forEach(el=>el.textContent=s.on?'Running':'Stopped');
+    app.querySelectorAll('[data-power-word]').forEach(el=>el.textContent=s.on?'On':'Off');
+    app.querySelectorAll('[data-power-hint]').forEach(el=>el.textContent=s.on?'Tap to stop':'Tap to start');
+    app.querySelectorAll('[data-action="power"]').forEach(el=>{el.dataset.on=String(s.on);el.setAttribute('aria-pressed',String(s.on));el.setAttribute('aria-label',s.on?'Stop lighting':'Start lighting');});
+    app.querySelectorAll('[data-action="audio"]').forEach(el=>el.setAttribute('aria-checked',String(s.audio)));
+    app.querySelectorAll('[data-audio-on]').forEach(el=>el.hidden=!s.audio);
+    app.querySelectorAll('[data-audio-off]').forEach(el=>el.hidden=s.audio);
+    app.querySelectorAll('[data-effect]').forEach(el=>el.setAttribute('aria-pressed',String(el.dataset.effect===s.effect)));
+    app.querySelectorAll('[data-source]').forEach(el=>el.setAttribute('aria-pressed',String(el.dataset.source===s.source)));
+    app.querySelectorAll('[data-field]').forEach(el=>{const v=s[el.dataset.field];if(v!==undefined && el.value!==String(v))el.value=String(v);});
+    app.querySelectorAll('[data-value]').forEach(el=>el.textContent=s[el.dataset.value]);
+    app.querySelectorAll('[data-ring]').forEach(el=>{let c=el.dataset.ring==='left'?s.left:s.right;if(s.effect==='Rainbow') c=el.dataset.ring==='left'?'#d88ae8':'#78cfae';el.style.setProperty('--rl-ring-color',s.on?c:'var(--rl-line)');el.style.opacity=s.on?String(.4+s.brightness*.006):'1';});
+    app.querySelectorAll('[data-footer]').forEach(el=>el.textContent=s.on?'Lighting continues when you close the app':'Lighting is stopped');
+  }
+  root.querySelectorAll('.rl-app').forEach(app=>{
+    const name=app.dataset.layout;
+    const s=states[name]=restore(name);
+    app.append(template('rl-settings'));
+    if(app.classList.contains('rl-focus'))app.append(template('rl-adjust'));
+    populateContext(app,s);render(app,s);
+    app.addEventListener('click',event=>{
+      const button=event.target.closest('button');if(!button)return;
+      let changed=false;
+      if(button.dataset.effect){s.effect=button.dataset.effect;populateContext(app,s);changed=true;}
+      if(button.dataset.source){s.source=button.dataset.source;changed=true;}
+      if(button.dataset.action==='power'){s.on=!s.on;changed=true;}
+      if(button.dataset.action==='audio'){s.audio=!s.audio;changed=true;}
+      if(['settings','adjust'].includes(button.dataset.action))app.querySelector('[data-overlay="'+button.dataset.action+'"]').hidden=false;
+      if(button.dataset.action==='close')app.querySelectorAll('[data-overlay]').forEach(el=>el.hidden=true);
+      if(changed){render(app,s);persist();}
+    });
+    app.addEventListener('input',event=>{
+      const field=event.target.dataset.field;if(!field)return;
+      s[field]=event.target.type==='range'?Number(event.target.value):event.target.value;
+      if(field==='effect')populateContext(app,s);
+      render(app,s);persist();
+    });
+    if(globalThis.Tweak){const tweak=new Tweak({container:app,onChange:()=>{render(app,s);persist();}});tweak.addColorPicker(s,'accent',{label:'Accent',reference:'--rl-accent'});tweak.addSlider(s,'radius',{label:'Card corners',min:12,max:30,step:2,unit:'px'});tweak.addSelect(s,'appearance',{label:'Appearance',options:['Dark','Light']});}
+  });
+  window.addEventListener('openai:set_globals',event=>{
+    const layouts=event.detail?.globals?.widgetState?.modelContent?.layouts;
+    if(!layouts)return;
+    root.querySelectorAll('.rl-app').forEach(app=>{
+      const data=layouts[app.dataset.layout];if(!data)return;
+      const s=states[app.dataset.layout];
+      for(const key of Object.keys(defaults))if(typeof data[key]===typeof defaults[key])s[key]=data[key];
+      populateContext(app,s);render(app,s);
+    });
+  });
+  if(globalThis.lucide)lucide.createIcons();
+})();
+</script>

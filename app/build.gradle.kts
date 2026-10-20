@@ -12,7 +12,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.moonbench.bifrost"
+        applicationId = "io.github.marcinsz89.runelight"
         minSdk = 33
         targetSdk = 36
         versionCode = 16
