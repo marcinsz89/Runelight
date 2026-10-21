@@ -152,7 +152,9 @@ class LEDService : Service() {
         type!!
         stopping = false
         ownsSession = true
-        val token = runtime.begin(type)
+        val keepOutput = runtime.state.phase == LightingPhase.RUNNING &&
+            currentAnimation != null && ledController?.isAvailable == true
+        val token = runtime.begin(type, keepOutput)
         publishState()
         try {
             promoteToForeground()
@@ -203,7 +205,7 @@ class LEDService : Service() {
             animation.setSpeed(currentSpeed)
             animation.setLerpStrength(currentSmoothness)
             startupTimeout = Runnable {
-                if (runtime.isCurrent(token) && runtime.state.phase == LightingPhase.STARTING)
+                if (runtime.awaitingFrame(token))
                     cleanupAndStop(failure = LightingFailure.START_FAILED)
             }.also { handler.postDelayed(it, 5000L) }
             animation.start()

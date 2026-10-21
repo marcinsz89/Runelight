@@ -21,6 +21,9 @@ import androidx.test.espresso.matcher.ViewMatchers.withText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.moonbench.bifrost.services.LEDService
+import com.moonbench.bifrost.services.LightingPhase
+import com.moonbench.bifrost.services.LightingState
+import androidx.lifecycle.Observer
 import com.google.android.material.button.MaterialButton
 import com.moonbench.bifrost.ui.ColorLevelTile
 import com.skydoves.colorpickerview.ColorPickerView
@@ -135,10 +138,13 @@ class RunelightActivityTest {
             }
             assertTrue("Animation did not reach $mode", matched)
         }
+        val handoffPhases = mutableListOf<LightingPhase>()
+        val observer = Observer<LightingState> { handoffPhases.add(it.phase) }
         launchOnActiveDisplay().use { scenario ->
             try {
                 scenario.onActivity { it.findViewById<View>(R.id.lightingTile).performClick() }
                 awaitMode(LedAnimationType.STATIC)
+                instrumentation.runOnMainSync { LEDService.state.observeForever(observer) }
                 for ((button, mode) in listOf(
                     R.id.effectRainbow to LedAnimationType.RAINBOW,
                     R.id.effectBreathing to LedAnimationType.BREATH,
@@ -148,7 +154,19 @@ class RunelightActivityTest {
                     scenario.onActivity { it.findViewById<MaterialButton>(button).performClick() }
                     awaitMode(mode)
                 }
+                scenario.onActivity { it.findViewById<MaterialButton>(R.id.appearanceButton).performClick() }
+                instrumentation.waitForIdleSync()
+                scenario.onActivity {
+                    assertEquals(it.getString(R.string.runelight_on),
+                        it.findViewById<android.widget.TextView>(R.id.lightingState).text.toString())
+                    assertTrue(it.findViewById<View>(R.id.lightingTile).isActivated)
+                }
+                instrumentation.runOnMainSync {
+                    assertTrue("A mode handoff blinked the acknowledged On state: $handoffPhases",
+                        handoffPhases.isNotEmpty() && handoffPhases.all { it == LightingPhase.RUNNING })
+                }
             } finally {
+                instrumentation.runOnMainSync { LEDService.state.removeObserver(observer) }
                 context.stopService(Intent(context, LEDService::class.java))
                 awaitMode(null)
             }

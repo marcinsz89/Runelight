@@ -17,18 +17,26 @@ internal class LightingRuntime {
     var state = LightingState()
         private set
     private var generation = 0L
+    private var pendingEffect: LedAnimationType? = null
 
-    fun begin(effect: LedAnimationType): Long {
+    fun begin(effect: LedAnimationType, keepOutput: Boolean = false): Long {
         generation++
-        state = LightingState(LightingPhase.STARTING, effect)
+        pendingEffect = effect
+        // During a plain handoff the acknowledged old frame remains lit. Keep
+        // reporting it until the replacement supplies an accepted frame.
+        if (!keepOutput || state.phase != LightingPhase.RUNNING)
+            state = LightingState(LightingPhase.STARTING, effect)
         return generation
     }
 
     fun frameAccepted(token: Long): Boolean {
-        if (token != generation || state.phase != LightingPhase.STARTING) return false
-        state = state.copy(phase = LightingPhase.RUNNING)
+        if (!awaitingFrame(token)) return false
+        state = LightingState(LightingPhase.RUNNING, pendingEffect)
+        pendingEffect = null
         return true
     }
+
+    fun awaitingFrame(token: Long): Boolean = isCurrent(token) && pendingEffect != null
 
     fun isCurrent(token: Long): Boolean = token == generation &&
         state.phase in setOf(LightingPhase.STARTING, LightingPhase.RUNNING)
@@ -36,6 +44,7 @@ internal class LightingRuntime {
     fun end(failure: LightingFailure? = null) {
         generation++
         state = if (failure == null) LightingState() else
-            LightingState(LightingPhase.FAILED, state.effect, failure)
+            LightingState(LightingPhase.FAILED, pendingEffect ?: state.effect, failure)
+        pendingEffect = null
     }
 }

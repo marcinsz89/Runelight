@@ -4,6 +4,10 @@ This follows the [output/handoff increment](service-ownership-2026-10-21.md).
 It completes the next plain-effect ownership slice before production Ambient.
 It does not enable Ambient/audio or finish the full source/resource cleanup.
 
+Follow-up: the [UI polish](ui-polish-2026-10-21.md) keeps acknowledged Running
+state through a plain-effect handoff while still awaiting the replacement frame.
+Cold starts, Stop, failure and stale-token rules retain their earlier semantics.
+
 ## Ownership and timing
 
 - Configuration remains in `runelight_controls`. `LightingIntentStore` persists

@@ -5,6 +5,38 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class LightingRuntimeTest {
+    @Test fun aHandoffKeepsAcknowledgedOutputOnUntilTheNewFrameArrives() {
+        val runtime = LightingRuntime()
+        val old = runtime.begin(LedAnimationType.STATIC)
+        runtime.frameAccepted(old)
+        val next = runtime.begin(LedAnimationType.RAINBOW, keepOutput = true)
+        assertEquals(LightingState(LightingPhase.RUNNING, LedAnimationType.STATIC), runtime.state)
+        assertTrue(runtime.awaitingFrame(next))
+        assertFalse(runtime.frameAccepted(old))
+        assertTrue(runtime.frameAccepted(next))
+        assertEquals(LightingState(LightingPhase.RUNNING, LedAnimationType.RAINBOW), runtime.state)
+        assertFalse(runtime.awaitingFrame(next))
+    }
+
+    @Test fun heldOutputStillRequiresAReplacementFrameAndCanFailOrStop() {
+        val runtime = LightingRuntime()
+        runtime.frameAccepted(runtime.begin(LedAnimationType.STATIC))
+        val next = runtime.begin(LedAnimationType.PULSE, keepOutput = true)
+        assertTrue(runtime.awaitingFrame(next))
+        runtime.end(LightingFailure.START_FAILED)
+        assertFalse(runtime.awaitingFrame(next))
+        assertEquals(LightingState(LightingPhase.FAILED, LedAnimationType.PULSE, LightingFailure.START_FAILED), runtime.state)
+        assertFalse(runtime.frameAccepted(next))
+        runtime.end()
+        assertEquals(LightingState(), runtime.state)
+    }
+
+    @Test fun anUnacknowledgedStartCannotClaimHeldOutput() {
+        val runtime = LightingRuntime()
+        runtime.begin(LedAnimationType.STATIC, keepOutput = true)
+        assertEquals(LightingPhase.STARTING, runtime.state.phase)
+    }
+
     @Test fun aStartNeedsAnAcceptedFrameBeforeItIsRunning() {
         val runtime = LightingRuntime()
         val token = runtime.begin(LedAnimationType.STATIC)

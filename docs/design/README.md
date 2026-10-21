@@ -5,7 +5,9 @@ Selected by the owner on 2026-10-20; then refined to give Runelight its own iden
 - [Interactive standalone mockup](quick-tiles.html) — open locally in a browser.
 - [Editable source fragment](quick-tiles.fragment.html).
 - [Saved preview image](quick-tiles.png).
-- Current native [configuration](native-quick-tiles.png) and [inline picker](native-color-picker.png).
+- Current native configuration in [dark](native-quick-tiles.png) and
+  [light](native-quick-tiles-light.png), plus the [inline picker](native-color-picker.png).
+- [Surface and motion refinement](../ui-polish-2026-10-21.md) — current styling work.
 
 ![Runelight Quick tiles proposal](quick-tiles.png)
 
@@ -27,14 +29,33 @@ The HTML/image above preserve the earlier proposal.
 - **ᛞ Dagaz** day/daylight motif as the mark; no lightning logo. The prototype
   uses a Unicode glyph; the Android asset should render consistently without
   relying on the device's installed rune font.
-- Flatter cards, modest corners, sentence-case labels and a unified effect strip.
+- Layered cards, modest corners, sentence-case labels and a unified effect strip.
   ThorTune inspired the directness and large controls; the refined styling is
-  specific to Runelight. No theme packs, artwork or decorative UI animation.
+  specific to Runelight. No theme packs or artwork; animation provides brief
+  interaction feedback and settles completely afterward.
 - Active Lighting and sound tiles use a full-surface violet gradient with white
   text; inactive tiles use the normal light/dark card surface. Keep explicit
   state text as well as color. Lighting highlights only after the running state
   is observed; sound remains inactive while unavailable in the current build.
   The whole sound tile is the toggle; there is no separate switch inside it.
+- Backgrounds use a restrained violet-to-neutral gradient. Inactive surfaces use
+  shallow diagonal shading and fine edges; light mode has its own high-contrast
+  palette. Color/Speed tiles have subtle highlights and shaded fills, keeping
+  labels readable across their gradient. Shaders are cached until size/color changes.
+  Dark-mode tiles use stronger highlights/shadows across the visible fill so
+  gradients remain apparent at low levels; light mode retains its softer treatment.
+- Effect selection blends fill and edge over 180 ms. Main tiles have an 80 ms
+  press and 160 ms release; acknowledged activation adds a restrained violet
+  shadow and a 160 ms surface fade. Respect Android's animation setting and
+  finish transient animations on UI closure. No continuous glow/pulse loop.
+- Bundle Poppins Regular/Bold, matching Cocoon's font assets, for the native
+  interface. Main On/Off labels use 38sp and occupy the former subtitle space;
+  trimmed font padding keeps the existing tile height and main control positions.
+- Main tiles show their title and state without secondary instructions. Keep
+  Start/Stop and unavailable explanations in accessibility labels.
+- A working effect handoff keeps the acknowledged On state until the next frame
+  arrives. Appearance recreation binds that state immediately, without replaying
+  activation. Cold starts still wait for real output acknowledgement.
 - The selected effect uses a strong accent fill and contrasting bold text so
   the selection remains obvious beside the active tiles, in both appearances.
 - Plain labels throughout: Lighting and Start/Stop. No "Call Heimdall" or
@@ -74,8 +95,11 @@ integration; do not present the manual tile color as a measured Ambient preview.
 
 Color editing replaces the effect strip/configuration area, retaining the header
 and Lighting/sound tiles. Use the embedded native ColorPickerView wheel with a
-Runelight selector, animated preview, hex/level readout and Copy other side,
-Cancel and Apply actions. No RGB slider stack, extra dialog or scrolling.
+Runelight selector. The editor has three columns: a large wheel on the left;
+selected-side title, animated color preview and hex/level details in the middle;
+and Apply, Copy other side and Cancel stacked on the right. The three actions
+share the full available height, with 12dp gaps and matching rounded corners.
+No RGB slider stack, extra dialog or scrolling.
 Copy includes both color and brightness but only changes the draft. On a running
 effect, draft colors preview on the LEDs without restarting the animation.
 Cancel/Back/closing the UI restores saved settings; Apply persists the draft.

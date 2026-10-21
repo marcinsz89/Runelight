@@ -131,7 +131,9 @@ policies/startup receivers. Plain-effect regressions pass; implement top Ambient
 next. Full legacy source/resource removal and process-loss acceptance remain open.
 See the [ownership/handoff results](service-ownership-2026-10-21.md), including
 the still-open lower-screen Home/sleep/wake restoration issue and matched tests
-with Bifrost debug and Settings.
+with Bifrost debug and Settings. The owner's later cross-app observation also
+suggests task history matters. Investigate this as shared device integration
+behavior; current evidence does not justify a Runelight-specific UI workaround.
 
 Establish:
 

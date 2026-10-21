@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.StateListDrawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -27,6 +28,7 @@ import com.moonbench.bifrost.services.LightingPhase
 import com.moonbench.bifrost.services.LightingFailure
 import com.moonbench.bifrost.services.LightingIntentStore
 import com.moonbench.bifrost.ui.ColorLevelTile
+import com.moonbench.bifrost.ui.EffectSelectionMotion
 import com.skydoves.colorpickerview.ColorPickerView
 import com.skydoves.colorpickerview.listeners.ColorEnvelopeListener
 import kotlin.math.roundToInt
@@ -35,9 +37,9 @@ import kotlin.math.roundToInt
 class RunelightActivity : AppCompatActivity() {
     private val prefs by lazy { getSharedPreferences("runelight_controls", MODE_PRIVATE) }
     private val handler = Handler(Looper.getMainLooper())
+    private val effectMotion = EffectSelectionMotion()
     private lateinit var lightingTile: MaterialCardView
     private lateinit var lightingState: TextView
-    private lateinit var lightingAction: TextView
     private lateinit var status: TextView
     private lateinit var leftLevelTile: ColorLevelTile
     private lateinit var rightLevelTile: ColorLevelTile
@@ -60,6 +62,7 @@ class RunelightActivity : AppCompatActivity() {
     private var pendingNotificationStart = false
     private var startingAt = 0L
     private var startError = false
+    private var runtimeRendered = false
 
     private val effects = linkedMapOf(
         R.id.effectSolid to LedAnimationType.STATIC,
@@ -116,7 +119,6 @@ class RunelightActivity : AppCompatActivity() {
 
         lightingTile = findViewById(R.id.lightingTile)
         lightingState = findViewById(R.id.lightingState)
-        lightingAction = findViewById(R.id.lightingAction)
         status = findViewById(R.id.quickStatus)
         leftLevelTile = findViewById(R.id.quickLeftColor)
         rightLevelTile = findViewById(R.id.quickRightColor)
@@ -165,6 +167,7 @@ class RunelightActivity : AppCompatActivity() {
         group.check(effects.entries.first { it.value == effect }.key)
         group.addOnButtonCheckedListener { _, checkedId, checked ->
             val next = effects[checkedId]
+            if (next != null) effectMotion.select(findViewById(checkedId))
             if (checked && next != null && next != effect) {
                 effect = next
                 editingRight = null
@@ -251,6 +254,7 @@ class RunelightActivity : AppCompatActivity() {
     }
 
     override fun onStop() {
+        effectMotion.finish()
         uiVisible = false
         clearColorPreview(restore = true)
         handler.removeCallbacks(startTimeout)
@@ -268,6 +272,7 @@ class RunelightActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        effectMotion.finish()
         clearColorPreview(restore = false)
         previewAnimator?.cancel()
         handler.removeCallbacks(startTimeout)
@@ -401,7 +406,18 @@ class RunelightActivity : AppCompatActivity() {
         val runtime = LEDService.state.value
         val active = runtime?.phase == LightingPhase.RUNNING
         if (active && editingRight != null && !colorPreviewSent) requestColorPreview()
-        lightingTile.isActivated = active
+        if (lightingTile.isActivated != active) {
+            val surface = lightingTile.getChildAt(0).background as? StateListDrawable
+            val duration = if (runtimeRendered && ValueAnimator.areAnimatorsEnabled()) 160 else 0
+            surface?.setEnterFadeDuration(duration)
+            surface?.setExitFadeDuration(duration)
+            lightingTile.isActivated = active
+        }
+        if (!runtimeRendered) {
+            lightingTile.stateListAnimator?.jumpToCurrentState()
+            lightingTile.getChildAt(0).jumpDrawablesToCurrentState()
+        }
+        runtimeRendered = true
         if (active || runtime?.phase == LightingPhase.FAILED) {
             startingAt = 0L
             handler.removeCallbacks(startTimeout)
@@ -417,7 +433,6 @@ class RunelightActivity : AppCompatActivity() {
             else -> R.string.runelight_stopped
         })
         val canStop = active || starting
-        lightingAction.setText(if (canStop) R.string.runelight_stop else R.string.runelight_start)
         lightingTile.contentDescription = getString(if (canStop) R.string.runelight_stop else R.string.runelight_start)
         val error = when {
             runtime?.failure == LightingFailure.OUTPUT_UNAVAILABLE -> R.string.runelight_output_unavailable

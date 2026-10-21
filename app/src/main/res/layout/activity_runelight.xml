@@ -2,6 +2,7 @@
     android:id="@+id/runelightRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@drawable/runelight_background"
     android:orientation="vertical"
     android:padding="16dp">
     <LinearLayout
@@ -24,19 +25,25 @@
             android:textSize="22sp"
             android:textStyle="bold" />
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/appearanceButton" style="@style/Widget.Material3.Button.TextButton"
+            android:id="@+id/appearanceButton" style="@style/RunelightTextButton"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:minWidth="0dp"
             android:padding="0dp"
             android:text="@string/runelight_appearance_symbol"
             android:textSize="24sp"
+            app:backgroundTint="@color/runelight_card"
+            app:strokeColor="@color/runelight_edge"
+            app:strokeWidth="1dp"
+            app:cornerRadius="16dp"
             android:contentDescription="@string/runelight_appearance" />
     </LinearLayout>
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
+        android:clipChildren="false"
+        android:clipToPadding="false"
         android:orientation="horizontal"
         android:baselineAligned="false">
         <com.google.android.material.card.MaterialCardView
@@ -54,9 +61,10 @@
                 android:background="@drawable/runelight_toggle_surface"
                 android:orientation="vertical"
                 android:padding="16dp"
-                android:minHeight="104dp">
+                android:minHeight="110dp">
                 <TextView style="@style/RunelightLabel"
                     android:text="@string/runelight_lighting"
+                    android:includeFontPadding="false"
                     android:duplicateParentState="true"
                     android:textColor="@color/runelight_toggle_secondary" />
                 <TextView
@@ -65,16 +73,11 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
                     android:text="@string/runelight_stopped"
+                    android:includeFontPadding="false"
                     android:duplicateParentState="true"
                     android:textColor="@color/runelight_toggle_text"
-                    android:textSize="26sp"
+                    android:textSize="38sp"
                     android:textStyle="bold" />
-                <TextView
-                    android:id="@+id/lightingAction" style="@style/RunelightLabel"
-                    android:duplicateParentState="true"
-                    android:textColor="@color/runelight_toggle_secondary"
-                    android:layout_marginTop="4dp"
-                    android:text="@string/runelight_start" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
         <com.google.android.material.card.MaterialCardView
@@ -94,9 +97,10 @@
                 android:background="@drawable/runelight_toggle_surface"
                 android:orientation="vertical"
                 android:padding="16dp"
-                android:minHeight="104dp">
+                android:minHeight="110dp">
                 <TextView style="@style/RunelightLabel"
                     android:text="@string/runelight_sound"
+                    android:includeFontPadding="false"
                     android:duplicateParentState="true"
                     android:textColor="@color/runelight_toggle_secondary" />
                 <TextView
@@ -105,15 +109,11 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
                     android:text="@string/runelight_off"
+                    android:includeFontPadding="false"
                     android:duplicateParentState="true"
                     android:textColor="@color/runelight_toggle_text"
-                    android:textSize="26sp"
+                    android:textSize="38sp"
                     android:textStyle="bold" />
-                <TextView style="@style/RunelightLabel"
-                    android:layout_marginTop="4dp"
-                    android:duplicateParentState="true"
-                    android:textColor="@color/runelight_toggle_secondary"
-                    android:text="@string/runelight_not_available" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
     </LinearLayout>
@@ -187,64 +187,85 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:orientation="vertical"
+        android:orientation="horizontal"
+        android:baselineAligned="false"
         android:layout_marginTop="12dp"
         android:padding="12dp"
         android:background="@drawable/runelight_toggle_surface"
         android:visibility="gone">
-        <LinearLayout android:layout_width="match_parent" android:layout_height="24dp" android:gravity="center_vertical">
+        <com.skydoves.colorpickerview.ColorPickerView
+            android:id="@+id/quickColorPicker"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="2"
+            android:contentDescription="@string/runelight_color_wheel"
+            app:selector="@drawable/runelight_color_selector" />
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:layout_marginStart="12dp"
+            android:orientation="vertical"
+            android:gravity="center">
             <TextView style="@style/RunelightLabel"
                 android:id="@+id/quickColorTitle"
-                android:layout_width="0dp"
-                android:layout_weight="1"
+                android:layout_width="match_parent"
+                android:gravity="center"
                 android:textColor="@color/runelight_text"
                 android:textStyle="bold" />
-            <TextView style="@style/RunelightLabel" android:id="@+id/quickColorHex" />
-            <TextView style="@style/RunelightLabel"
-                android:id="@+id/quickColorLevel"
-                android:layout_marginStart="12dp" />
-        </LinearLayout>
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-            <com.skydoves.colorpickerview.ColorPickerView
-                android:id="@+id/quickColorPicker"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:contentDescription="@string/runelight_color_wheel"
-                app:selector="@drawable/runelight_color_selector" />
             <View
                 android:id="@+id/quickColorPreview"
                 android:layout_width="96dp"
                 android:layout_height="96dp"
-                android:layout_marginStart="12dp"
-                android:layout_marginEnd="12dp"
+                android:layout_marginTop="10dp"
                 android:importantForAccessibility="no" />
+            <TextView style="@style/RunelightLabel"
+                android:id="@+id/quickColorHex"
+                android:layout_marginTop="10dp" />
+            <TextView style="@style/RunelightLabel"
+                android:id="@+id/quickColorLevel"
+                android:layout_marginTop="2dp" />
         </LinearLayout>
-        <LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:orientation="horizontal">
-            <com.google.android.material.button.MaterialButton
-                style="@style/Widget.Material3.Button.TextButton"
-                android:id="@+id/quickCopyOther"
-                android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1"
-                android:text="@string/runelight_copy_right" android:textAllCaps="false" />
-            <com.google.android.material.button.MaterialButton style="@style/Widget.Material3.Button.TextButton"
-                android:id="@+id/quickCancelColor"
-                android:layout_width="0dp"
-                android:layout_height="48dp"
-                android:layout_weight="1"
-                android:text="@string/runelight_cancel_color"
-                android:textAllCaps="false" />
-            <com.google.android.material.button.MaterialButton style="@style/Widget.Material3.Button"
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1.15"
+            android:layout_marginStart="12dp"
+            android:orientation="vertical">
+            <com.google.android.material.button.MaterialButton style="@style/RunelightPrimaryButton"
                 android:id="@+id/quickApplyColor"
-                android:layout_width="0dp"
-                android:layout_height="48dp"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
                 android:layout_weight="1"
+                android:layout_marginBottom="6dp"
+                android:minHeight="48dp"
                 android:text="@string/runelight_apply_color"
-                android:textAllCaps="false" />
+                android:textAllCaps="false"
+                android:insetTop="0dp"
+                android:insetBottom="0dp" />
+            <com.google.android.material.button.MaterialButton style="@style/RunelightSecondaryButton"
+                android:id="@+id/quickCopyOther"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="6dp"
+                android:minHeight="48dp"
+                android:text="@string/runelight_copy_right"
+                android:textAllCaps="false"
+                android:insetTop="0dp"
+                android:insetBottom="0dp" />
+            <com.google.android.material.button.MaterialButton style="@style/RunelightSecondaryButton"
+                android:id="@+id/quickCancelColor"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:layout_marginTop="6dp"
+                android:minHeight="48dp"
+                android:text="@string/runelight_cancel_color"
+                android:textAllCaps="false"
+                android:insetTop="0dp"
+                android:insetBottom="0dp" />
         </LinearLayout>
     </LinearLayout>
 </LinearLayout>

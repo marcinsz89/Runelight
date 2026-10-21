@@ -1,11 +1,26 @@
 <resources>
-    <color name="runelight_bg">#F3F2F7</color>
+    <color name="runelight_bg">#EEEAF5</color>
+    <color name="runelight_bg_top">#E4DCF4</color>
+    <color name="runelight_bg_bottom">#F8F6FB</color>
     <color name="runelight_card">#FFFFFF</color>
-    <color name="runelight_text">#24222D</color>
-    <color name="runelight_secondary">#686473</color>
-    <color name="runelight_accent">#7053C7</color>
+    <color name="runelight_card_top">#FFFFFF</color>
+    <color name="runelight_card_bottom">#F3EFF9</color>
+    <color name="runelight_edge">#D4C9E3</color>
+    <color name="runelight_text">#231A32</color>
+    <color name="runelight_secondary">#62566F</color>
+    <color name="runelight_accent">#6942B6</color>
+    <color name="runelight_effect_selected">#DCCBFF</color>
+    <color name="runelight_effect_selected_text">#2C174B</color>
+    <color name="runelight_effect_edge">#9273CB</color>
+    <color name="runelight_active_top">#8051DA</color>
+    <color name="runelight_active_middle">#6940BE</color>
+    <color name="runelight_active_bottom">#472681</color>
+    <color name="runelight_active_edge">#B59AEF</color>
+    <color name="runelight_glow">#806E46AC</color>
 
     <style name="Theme.Runelight" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:fontFamily">@font/runelight</item>
+        <item name="fontFamily">@font/runelight</item>
         <item name="colorPrimary">@color/runelight_accent</item>
         <item name="colorOnPrimary">#FFFFFF</item>
         <item name="colorSurface">@color/runelight_card</item>
@@ -21,19 +36,44 @@
         <item name="cardBackgroundColor">@color/runelight_card</item>
         <item name="cardCornerRadius">16dp</item>
         <item name="cardElevation">0dp</item>
-        <item name="strokeWidth">0dp</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="strokeColor">@color/runelight_card_stroke</item>
+        <item name="android:stateListAnimator">@animator/runelight_tile_press</item>
+        <item name="android:outlineAmbientShadowColor">@color/runelight_glow</item>
+        <item name="android:outlineSpotShadowColor">@color/runelight_glow</item>
+    </style>
+    <style name="RunelightTextButton" parent="Widget.Material3.Button.TextButton">
+        <item name="android:fontFamily">@font/runelight</item>
+        <item name="fontFamily">@font/runelight</item>
+    </style>
+    <style name="RunelightPrimaryButton" parent="Widget.Material3.Button">
+        <item name="android:fontFamily">@font/runelight</item>
+        <item name="fontFamily">@font/runelight</item>
+        <item name="cornerRadius">12dp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    <style name="RunelightSecondaryButton" parent="RunelightTextButton">
+        <item name="backgroundTint">@color/runelight_card</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="strokeColor">@color/runelight_edge</item>
+        <item name="cornerRadius">12dp</item>
+        <item name="android:textStyle">bold</item>
     </style>
     <style name="RunelightLabel">
+        <item name="android:fontFamily">@font/runelight</item>
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:textColor">@color/runelight_secondary</item>
         <item name="android:textSize">13sp</item>
     </style>
     <style name="RunelightEffect" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:fontFamily">@font/runelight</item>
+        <item name="fontFamily">@font/runelight</item>
         <item name="backgroundTint">@color/runelight_effect_background</item>
         <item name="android:textColor">@color/runelight_effect_text</item>
         <item name="android:textStyle">bold</item>
-        <item name="strokeWidth">0dp</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="strokeColor">@color/runelight_effect_stroke</item>
         <item name="cornerRadius">10dp</item>
         <item name="android:layout_width">0dp</item>
         <item name="android:layout_height">48dp</item>
@@ -76,13 +116,12 @@
     <string name="runelight_percent">%1$d%%</string>
     <string name="runelight_sound">React to sound</string>
     <string name="runelight_sound_unavailable">React to sound. Not available in this build.</string>
-    <string name="runelight_not_available">Not available in this build</string>
     <string name="runelight_ambient_unavailable">Ambient. Not available in this build.</string>
     <string name="runelight_appearance">Switch light or dark appearance</string>
     <string name="runelight_appearance_symbol">◐</string>
     <string name="runelight_left_color">Left color</string>
     <string name="runelight_right_color">Right color</string>
-    <string name="runelight_apply_color">Apply color</string>
+    <string name="runelight_apply_color">Apply</string>
     <string name="runelight_cancel_color">Cancel</string>
     <string name="runelight_speed">Speed</string>
     <string name="runelight_notification_title">Lighting is active</string>

@@ -115,6 +115,16 @@ they do not identify the complete launcher/vendor/Pathfinder mechanism or prove
 that every earlier Bifrost setup behaved the same. The unlock issue remains OPEN.
 No speculative Activity finish/relaunch/lock-screen workaround was added.
 
+Owner follow-up on 2026-10-21: other apps also change visibility on wake. Some
+reappear on the lower screen; others do the opposite, depending on what was open
+before Home and lock. This corroborates a shared task/display restoration symptom
+and suggests prior task history is relevant. It does not isolate the responsible
+launcher, firmware or Pathfinder component. Keep this as an unresolved device
+integration investigation; do not add a Runelight-specific finish/relaunch workaround
+on this evidence alone. A later controlled comparison should vary the previous
+foreground app and display, and record task order before Home, after Home and
+after wake alongside whether a new Activity start actually occurred.
+
 Local evidence, original settings, aggregate task snapshots and test transcripts
 remain in ignored `local-test-results/2026-10-20-ambient-probe/` and
 `local-test-results/2026-10-21-ownership/`. The sleep/wake runs used ADB Sleep/Wake

@@ -1,10 +1,21 @@
 <resources>
-    <color name="runelight_bg">#121116</color>
-    <color name="runelight_card">#201E27</color>
-    <color name="runelight_text">#F3F0FA</color>
-    <color name="runelight_secondary">#ACA6BA</color>
+    <color name="runelight_bg">#111016</color>
+    <color name="runelight_bg_top">#211A30</color>
+    <color name="runelight_bg_bottom">#0E0D13</color>
+    <color name="runelight_card">#282330</color>
+    <color name="runelight_card_top">#302A3B</color>
+    <color name="runelight_card_bottom">#211D2A</color>
+    <color name="runelight_edge">#4C405D</color>
+    <color name="runelight_text">#FAF7FF</color>
+    <color name="runelight_secondary">#C0B6D0</color>
     <color name="runelight_accent">#B69AF4</color>
+    <color name="runelight_effect_selected">#7044BE</color>
+    <color name="runelight_effect_selected_text">#FFFFFF</color>
+    <color name="runelight_effect_edge">#BB95FF</color>
+    <color name="runelight_glow">#B07951CB</color>
     <style name="Theme.Runelight" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:fontFamily">@font/runelight</item>
+        <item name="fontFamily">@font/runelight</item>
         <item name="colorPrimary">@color/runelight_accent</item>
         <item name="colorOnPrimary">#211539</item>
         <item name="colorSurface">@color/runelight_card</item>

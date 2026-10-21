@@ -28,19 +28,30 @@ capture results and a framework watchdog incident. It emits no LED output, so
 its source/color/Stop passes do not satisfy the full end-to-end scenarios below.
 Controlled playback signal, bottom screenshots + audio, sound-off continuity,
 probe Home/ADB display movement and consent denial/recovery now have scoped
-passes. Actual LED Ambient/audio, Pathfinder's shortcut and long-run performance
-remain unproven; the broader table still requires end-to-end implementation.
+passes. Actual LED Ambient/audio and long-run performance remain unproven;
+the broader table still requires end-to-end implementation.
 
 The [ownership/handoff increment](service-ownership-2026-10-21.md) adds scoped
 passes for closed-driver fencing, Solid timer idle, rapid Stop/Start, UI task
 removal and plain-effect handoff. Lower-screen Home/sleep/wake unexpectedly
 restores the previous app in matched Runelight, Bifrost debug and Settings tests;
-this remains open and is not a passed wake scenario.
+this remains open and is not a passed wake scenario. The owner subsequently
+reported the same visibility changes across other apps, varying with the app
+history before Home/lock. See the report for the scoped evidence and remaining
+cause investigation.
 
 The [service-state increment](service-state-2026-10-21.md) adds awake Thor passes
 for wanted-intent/explicit Stop, ignored legacy commands, destruction/recreation
 without automatic resume and observed output acceptance. These scoped results do
 not turn the historical baseline table below into a full product acceptance pass.
+
+**Owner check — 2026-10-21:** the owner confirms that the current Runelight UI
+successfully swaps between screens using Pathfinder's shortcut. Record this as
+an owner-reported PASS for basic shortcut movement on the current UI build
+([typography/editor revision](ui-polish-2026-10-21.md)); no additional device run
+was performed to collect this report. Editor drafts, active Ambient/audio capture
+continuity, repeated moves and the Pathfinder enabled/disabled comparison remain
+separate checks. Historical baseline results below are retained.
 
 Use `PASS`, `FAIL`, `BLOCKED` or `NOT RUN`. Keep raw logs and identifying device
 data under ignored `local-test-results/`; commit only deliberately redacted notes.
