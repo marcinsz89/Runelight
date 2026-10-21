@@ -70,9 +70,14 @@ class RainbowAnimation(
         handler.post(runnable)
     }
 
-    override fun stop() {
+    override fun stop() = stop(clearOutput = true)
+
+    override fun stopForHandoff() = stop(clearOutput = false)
+
+    private fun stop(clearOutput: Boolean) {
         running = false
         handler.removeCallbacksAndMessages(null)
+        if (!clearOutput) return
         ledController.setLedColor(
             0,
             0,

@@ -81,9 +81,16 @@ mapping together in local evidence when diagnosing release traces.
 
 The inherited baseline has 12 JVM test files (60 tests), covering manifests,
 migration, plugins, external contracts, schedules and crossfade math.
-`app/src/androidTest/.../RunelightActivityTest.kt` adds two native behavior tests:
-effect restoration without Start and unconfirmed inline color drafts surviving
-recreation. Source-string manifest checks do not verify Android lifecycle behavior.
+`app/src/androidTest/.../RunelightActivityTest.kt` covers effect/draft restoration,
+independent levels, the mode-specific Speed tile, copy/Cancel/Apply, gestures and
+real running-mode acknowledgement on the Thor. `AnimationOutputTest` runs the
+real animation timers and driver against an in-memory Binder: it checks temporal
+frames, side scaling, settled output and Stop without writing physical LEDs.
+Source-string manifest checks do not verify Android lifecycle behavior.
+
+`LightingServiceLifecycleTest` exercises explicit Start/Stop, task removal,
+durable intent, ignored legacy commands and destruction/recreation without
+automatic resume. See the [current results](docs/service-state-2026-10-21.md).
 
 Build and run the instrumentation suite on the explicitly selected Thor:
 
@@ -105,7 +112,7 @@ Known full-lint errors:
 
 - Two `MissingPermission` diagnostics at `tools/AudioAnalyzer.kt:55`, including
   absent `RECORD_AUDIO` and missing runtime permission handling (review R6).
-- `StartActivityAndCollapseDeprecated` at `services/BifrostTileService.kt:87`.
+- `StartActivityAndCollapseDeprecated` at `services/BifrostTileService.kt:52`.
   The old overload is guarded below API 34. Evaluate this specific compatibility
   diagnostic or retire the tile with its subsystem; do not assume a Thor crash.
 

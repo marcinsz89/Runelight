@@ -1,17 +1,18 @@
 package com.moonbench.bifrost
 
 import android.Manifest
+import android.animation.ValueAnimator
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.content.res.ColorStateList
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.view.View
 import android.widget.TextView
-import android.widget.ScrollView
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
@@ -20,9 +21,14 @@ import androidx.core.content.edit
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.card.MaterialCardView
-import com.google.android.material.slider.Slider
 import com.moonbench.bifrost.animations.LedAnimationType
 import com.moonbench.bifrost.services.LEDService
+import com.moonbench.bifrost.services.LightingPhase
+import com.moonbench.bifrost.services.LightingFailure
+import com.moonbench.bifrost.services.LightingIntentStore
+import com.moonbench.bifrost.ui.ColorLevelTile
+import com.skydoves.colorpickerview.ColorPickerView
+import com.skydoves.colorpickerview.listeners.ColorEnvelopeListener
 import kotlin.math.roundToInt
 
 /** First native Quick tiles increment. Capture and sound await their own engine work. */
@@ -33,11 +39,24 @@ class RunelightActivity : AppCompatActivity() {
     private lateinit var lightingState: TextView
     private lateinit var lightingAction: TextView
     private lateinit var status: TextView
-    private lateinit var brightnessSlider: Slider
-    private lateinit var speedSlider: Slider
+    private lateinit var leftLevelTile: ColorLevelTile
+    private lateinit var rightLevelTile: ColorLevelTile
+    private lateinit var speedTile: ColorLevelTile
     private var editingRight: Boolean? = null
     private var draftColor = Color.WHITE
-    private var syncingColorEditor = false
+    private var draftBrightness = 40
+    private var previewAnimator: ValueAnimator? = null
+    private var pendingColorPreview: Runnable? = null
+    private var colorPreviewSent = false
+    private var previewSuppressed = false
+    private var uiVisible = false
+    private val closeColorEditor = object : OnBackPressedCallback(false) {
+        override fun handleOnBackPressed() {
+            clearColorPreview(restore = true)
+            editingRight = null
+            renderControls()
+        }
+    }
     private var pendingNotificationStart = false
     private var startingAt = 0L
     private var startError = false
@@ -49,7 +68,8 @@ class RunelightActivity : AppCompatActivity() {
         R.id.effectPulse to LedAnimationType.PULSE
     )
     private var effect = LedAnimationType.STATIC
-    private var brightness = 40
+    private var leftBrightness = 40
+    private var rightBrightness = 40
     private var speed = 50
     private var leftColor = Color.rgb(182, 154, 244)
     private var rightColor = Color.rgb(116, 212, 213)
@@ -65,12 +85,7 @@ class RunelightActivity : AppCompatActivity() {
         }
     }
 
-    private val observeService = object : Runnable {
-        override fun run() {
-            renderRuntime()
-            handler.postDelayed(this, 300L)
-        }
-    }
+    private val startTimeout = Runnable { renderRuntime() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         delegate.localNightMode = if (prefs.getBoolean("dark", true)) {
@@ -84,7 +99,10 @@ class RunelightActivity : AppCompatActivity() {
         // the task when Pathfinder or Android moves and recreates this Activity.
         effect = LedAnimationType.fromStoredName(prefs.getString("effect", null))
             ?.takeIf { it in effects.values } ?: LedAnimationType.STATIC
-        brightness = prefs.getInt("brightness", 40).coerceIn(0, 100)
+        // Seed both sides from the previous global level without losing existing settings.
+        val previousBrightness = prefs.getInt("brightness", 40)
+        leftBrightness = prefs.getInt("leftBrightness", previousBrightness).coerceIn(0, 100)
+        rightBrightness = prefs.getInt("rightBrightness", previousBrightness).coerceIn(0, 100)
         speed = prefs.getInt("speed", 50).coerceIn(0, 100)
         leftColor = prefs.getInt("leftColor", leftColor)
         rightColor = prefs.getInt("rightColor", rightColor)
@@ -94,22 +112,32 @@ class RunelightActivity : AppCompatActivity() {
             savedInstanceState.getBoolean("editingRight")
         } else null
         draftColor = savedInstanceState?.getInt("draftColor") ?: leftColor
+        draftBrightness = savedInstanceState?.getInt("draftBrightness") ?: if (editingRight == true) rightBrightness else leftBrightness
 
         lightingTile = findViewById(R.id.lightingTile)
         lightingState = findViewById(R.id.lightingState)
         lightingAction = findViewById(R.id.lightingAction)
         status = findViewById(R.id.quickStatus)
-        brightnessSlider = findViewById(R.id.quickBrightness)
-        speedSlider = findViewById(R.id.quickSpeed)
+        leftLevelTile = findViewById(R.id.quickLeftColor)
+        rightLevelTile = findViewById(R.id.quickRightColor)
+        leftLevelTile.label = getString(R.string.runelight_left)
+        rightLevelTile.label = getString(R.string.runelight_right)
+        onBackPressedDispatcher.addCallback(this, closeColorEditor)
+        speedTile = findViewById(R.id.quickSpeed)
+        speedTile.label = getString(R.string.runelight_speed)
+        speedTile.colorEditable = false
+        speedTile.color = ContextCompat.getColor(this, R.color.runelight_accent)
 
         lightingTile.setOnClickListener {
             if (LEDService.isRunning || pendingNotificationStart || startingAt != 0L) {
+                previewSuppressed = true
+                clearColorPreview(restore = false)
                 pendingNotificationStart = false
                 startingAt = 0L
                 startError = false
                 // Dispatch immediately: no Activity-owned debounce that pause
                 // or a display move could cancel before Stop reaches the service.
-                stopService(Intent(this, LEDService::class.java))
+                LEDService.requestStop(this)
                 renderRuntime()
             } else if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
                 != PackageManager.PERMISSION_GRANTED
@@ -146,41 +174,48 @@ class RunelightActivity : AppCompatActivity() {
                 if (LEDService.isRunning) startLighting()
             }
         }
-        brightnessSlider.value = brightness.toFloat()
-        brightnessSlider.addOnChangeListener { _, value, fromUser ->
-            if (fromUser) {
-                brightness = value.roundToInt()
-                saveControls()
-                renderBrightness()
-                updateParameters()
-            }
+        leftLevelTile.level = leftBrightness
+        rightLevelTile.level = rightBrightness
+        leftLevelTile.onLevelChanged = { value ->
+            leftBrightness = value
+            saveControls()
+            updateParameters()
         }
-        speedSlider.value = speed.toFloat()
-        speedSlider.addOnChangeListener { _, value, fromUser ->
-            if (fromUser) {
-                speed = value.roundToInt()
-                saveControls()
-                updateParameters()
-            }
+        rightLevelTile.onLevelChanged = { value ->
+            rightBrightness = value
+            saveControls()
+            updateParameters()
         }
-        findViewById<MaterialButton>(R.id.quickLeftColor).setOnClickListener { editColor(false) }
-        findViewById<MaterialButton>(R.id.quickRightColor).setOnClickListener { editColor(true) }
-        for (id in listOf(R.id.quickRed, R.id.quickGreen, R.id.quickBlue)) {
-            findViewById<Slider>(id).addOnChangeListener { _, _, _ ->
-                if (!syncingColorEditor) {
-                    draftColor = Color.rgb(
-                        findViewById<Slider>(R.id.quickRed).value.roundToInt(),
-                        findViewById<Slider>(R.id.quickGreen).value.roundToInt(),
-                        findViewById<Slider>(R.id.quickBlue).value.roundToInt()
-                    )
-                    findViewById<View>(R.id.quickColorPreview).setBackgroundColor(draftColor)
+        speedTile.level = speed
+        speedTile.onLevelChanged = { value ->
+            speed = value
+            saveControls()
+            updateParameters()
+        }
+        leftLevelTile.setOnClickListener { if (effect.needsColorSelection) editColor(false) }
+        rightLevelTile.setOnClickListener { if (effect.needsColorSelection) editColor(true) }
+        findViewById<ColorPickerView>(R.id.quickColorPicker).apply {
+            setLifecycleOwner(this@RunelightActivity)
+            setColorListener(ColorEnvelopeListener { envelope, fromUser ->
+                if (fromUser && editingRight != null) {
+                    draftColor = envelope.color
+                    renderColorPreview(animate = true)
                 }
-            }
+            })
         }
         findViewById<MaterialButton>(R.id.quickApplyColor).setOnClickListener {
+            clearColorPreview(restore = false)
             when (editingRight) {
-                true -> rightColor = draftColor
-                false -> leftColor = draftColor
+                true -> {
+                    rightColor = draftColor
+                    rightBrightness = draftBrightness
+                    rightLevelTile.level = rightBrightness
+                }
+                false -> {
+                    leftColor = draftColor
+                    leftBrightness = draftBrightness
+                    leftLevelTile.level = leftBrightness
+                }
                 null -> return@setOnClickListener
             }
             editingRight = null
@@ -190,20 +225,35 @@ class RunelightActivity : AppCompatActivity() {
             updateParameters()
         }
         findViewById<MaterialButton>(R.id.quickCancelColor).setOnClickListener {
+            clearColorPreview(restore = true)
             editingRight = null
-            findViewById<View>(R.id.quickColorEditor).visibility = View.GONE
+            renderControls()
+        }
+        findViewById<MaterialButton>(R.id.quickCopyOther).setOnClickListener {
+            if (editingRight == null) return@setOnClickListener
+            draftColor = if (editingRight == true) leftColor else rightColor
+            draftBrightness = if (editingRight == true) leftBrightness else rightBrightness
+            findViewById<ColorPickerView>(R.id.quickColorPicker).setInitialColor(draftColor)
+            renderColorPreview(animate = true)
         }
         if (editingRight != null) renderColorEditor()
         renderControls()
+        LEDService.state.observe(this) { renderRuntime() }
     }
 
     override fun onStart() {
         super.onStart()
-        handler.post(observeService)
+        uiVisible = true
+        renderRuntime()
+        if (startingAt != 0L) handler.postDelayed(startTimeout,
+            (5001L - (SystemClock.elapsedRealtime() - startingAt)).coerceAtLeast(0L))
+        requestColorPreview()
     }
 
     override fun onStop() {
-        handler.removeCallbacks(observeService)
+        uiVisible = false
+        clearColorPreview(restore = true)
+        handler.removeCallbacks(startTimeout)
         super.onStop()
     }
 
@@ -213,18 +263,22 @@ class RunelightActivity : AppCompatActivity() {
         outState.putBoolean("editingColor", editingRight != null)
         outState.putBoolean("editingRight", editingRight ?: false)
         outState.putInt("draftColor", draftColor)
+        outState.putInt("draftBrightness", draftBrightness)
         super.onSaveInstanceState(outState)
     }
 
     override fun onDestroy() {
-        handler.removeCallbacks(observeService)
+        clearColorPreview(restore = false)
+        previewAnimator?.cancel()
+        handler.removeCallbacks(startTimeout)
         super.onDestroy()
     }
 
     private fun saveControls() {
         prefs.edit {
             putString("effect", effect.name)
-            putInt("brightness", brightness)
+            putInt("leftBrightness", leftBrightness)
+            putInt("rightBrightness", rightBrightness)
             putInt("speed", speed)
             putInt("leftColor", leftColor)
             putInt("rightColor", rightColor)
@@ -232,14 +286,16 @@ class RunelightActivity : AppCompatActivity() {
     }
 
     private fun startLighting() {
+        previewSuppressed = false
         startingAt = SystemClock.elapsedRealtime()
         startError = false
         try {
             ContextCompat.startForegroundService(this, parameterIntent().apply {
+                action = LEDService.ACTION_START
                 putExtra("animationType", effect.name)
-                putExtra("performanceProfile", "HIGH")
-                putExtra(LEDService.EXTRA_ALLOW_BACKGROUND_RUN, true)
             })
+            handler.removeCallbacks(startTimeout)
+            handler.postDelayed(startTimeout, 5001L)
         } catch (_: RuntimeException) {
             startingAt = 0L
             startError = true
@@ -250,7 +306,9 @@ class RunelightActivity : AppCompatActivity() {
     private fun parameterIntent() = Intent(this, LEDService::class.java).apply {
         putExtra("animationColor", leftColor)
         putExtra("animationRightColor", rightColor)
-        putExtra("brightness", (brightness * 255 / 100f).roundToInt())
+        putExtra("brightness", 255)
+        putExtra(LEDService.EXTRA_LEFT_BRIGHTNESS_PERCENT, leftBrightness)
+        putExtra(LEDService.EXTRA_RIGHT_BRIGHTNESS_PERCENT, rightBrightness)
         putExtra("speed", speed / 100f)
         putExtra("smoothness", 0.5f)
     }
@@ -262,42 +320,92 @@ class RunelightActivity : AppCompatActivity() {
     private fun editColor(right: Boolean) {
         editingRight = right
         draftColor = if (right) rightColor else leftColor
+        draftBrightness = if (right) rightBrightness else leftBrightness
         renderColorEditor()
-        findViewById<ScrollView>(R.id.quickScroll).post {
-            findViewById<ScrollView>(R.id.quickScroll).fullScroll(View.FOCUS_DOWN)
-        }
+    }
+
+    private fun requestColorPreview() {
+        if (!uiVisible || editingRight == null || previewSuppressed || !LEDService.isRunning || pendingColorPreview != null) return
+        pendingColorPreview = Runnable {
+            pendingColorPreview = null
+            val right = editingRight
+            if (uiVisible && right != null && !previewSuppressed && LEDService.isRunning && effect.needsColorSelection) {
+                startService(parameterIntent().setAction(LEDService.ACTION_UPDATE_PARAMS).apply {
+                    putExtra(if (right) "animationRightColor" else "animationColor", draftColor)
+                    putExtra(if (right) LEDService.EXTRA_RIGHT_BRIGHTNESS_PERCENT else LEDService.EXTRA_LEFT_BRIGHTNESS_PERCENT, draftBrightness)
+                })
+                colorPreviewSent = true
+            }
+        }.also { handler.postDelayed(it, 32) }
+    }
+
+    private fun clearColorPreview(restore: Boolean) {
+        pendingColorPreview?.let(handler::removeCallbacks)
+        pendingColorPreview = null
+        if (colorPreviewSent && restore) updateParameters()
+        colorPreviewSent = false
+    }
+
+    private fun renderEditorVisibility() {
+        val editing = editingRight != null
+        findViewById<View>(R.id.effectButtons).visibility = if (editing) View.GONE else View.VISIBLE
+        findViewById<View>(R.id.quickConfiguration).visibility = if (editing) View.GONE else View.VISIBLE
+        findViewById<View>(R.id.quickColorEditor).visibility = if (editing) View.VISIBLE else View.GONE
+        closeColorEditor.isEnabled = editing
+        if (!editing) previewAnimator?.cancel()
     }
 
     private fun renderColorEditor() {
-        findViewById<View>(R.id.quickColorEditor).visibility = View.VISIBLE
+        renderEditorVisibility()
         findViewById<TextView>(R.id.quickColorTitle).setText(
             if (editingRight == true) R.string.runelight_right_color else R.string.runelight_left_color
         )
-        syncingColorEditor = true
-        findViewById<Slider>(R.id.quickRed).value = Color.red(draftColor).toFloat()
-        findViewById<Slider>(R.id.quickGreen).value = Color.green(draftColor).toFloat()
-        findViewById<Slider>(R.id.quickBlue).value = Color.blue(draftColor).toFloat()
-        syncingColorEditor = false
-        findViewById<View>(R.id.quickColorPreview).setBackgroundColor(draftColor)
+        findViewById<MaterialButton>(R.id.quickCopyOther).apply {
+            setText(if (editingRight == true) R.string.runelight_copy_left else R.string.runelight_copy_right)
+            contentDescription = getString(if (editingRight == true) R.string.runelight_copy_left_settings else R.string.runelight_copy_right_settings)
+        }
+        findViewById<ColorPickerView>(R.id.quickColorPicker).setInitialColor(draftColor)
+        renderColorPreview()
+    }
+
+    private fun renderColorPreview(animate: Boolean = false) {
+        val preview = findViewById<View>(R.id.quickColorPreview)
+        val background = (preview.background as? GradientDrawable) ?: GradientDrawable().also {
+            it.cornerRadius = 16 * resources.displayMetrics.density
+            preview.background = it
+        }
+        previewAnimator?.cancel()
+        val previous = background.color?.defaultColor ?: draftColor
+        findViewById<TextView>(R.id.quickColorHex).text = String.format("#%06X", draftColor and 0xFFFFFF)
+        findViewById<TextView>(R.id.quickColorLevel).text = getString(R.string.runelight_percent, draftBrightness)
+        if (animate && ValueAnimator.areAnimatorsEnabled()) {
+            previewAnimator = ValueAnimator.ofArgb(previous, draftColor).apply {
+                duration = 100
+                addUpdateListener { background.setColor(it.animatedValue as Int) }
+                start()
+            }
+        } else background.setColor(draftColor)
+        requestColorPreview()
     }
 
     private fun renderControls() {
-        findViewById<View>(R.id.quickColorControls).visibility = if (effect.needsColorSelection) View.VISIBLE else View.GONE
-        findViewById<View>(R.id.quickSpeedControls).visibility = if (effect.supportsSpeed) View.VISIBLE else View.GONE
-        for ((id, color) in listOf(R.id.quickLeftColor to leftColor, R.id.quickRightColor to rightColor)) {
-            findViewById<MaterialButton>(id).strokeColor = ColorStateList.valueOf(color)
-            findViewById<MaterialButton>(id).strokeWidth = (3 * resources.displayMetrics.density).roundToInt()
-        }
-        renderBrightness()
-    }
-
-    private fun renderBrightness() {
-        findViewById<TextView>(R.id.quickBrightnessValue).text = getString(R.string.runelight_percent, brightness)
+        renderEditorVisibility()
+        speedTile.visibility = if (effect.supportsSpeed) View.VISIBLE else View.GONE
+        leftLevelTile.colorEditable = effect.needsColorSelection
+        rightLevelTile.colorEditable = effect.needsColorSelection
+        leftLevelTile.color = if (effect.needsColorSelection) leftColor else ContextCompat.getColor(this, R.color.runelight_accent)
+        rightLevelTile.color = if (effect.needsColorSelection) rightColor else ContextCompat.getColor(this, R.color.runelight_accent)
     }
 
     private fun renderRuntime() {
-        val active = LEDService.runningEffect != null && LEDService.isRunning
-        if (active) startingAt = 0L
+        val runtime = LEDService.state.value
+        val active = runtime?.phase == LightingPhase.RUNNING
+        if (active && editingRight != null && !colorPreviewSent) requestColorPreview()
+        lightingTile.isActivated = active
+        if (active || runtime?.phase == LightingPhase.FAILED) {
+            startingAt = 0L
+            handler.removeCallbacks(startTimeout)
+        }
         if (startingAt != 0L && SystemClock.elapsedRealtime() - startingAt > 5000L) {
             startingAt = 0L
             startError = true
@@ -311,10 +419,13 @@ class RunelightActivity : AppCompatActivity() {
         val canStop = active || starting
         lightingAction.setText(if (canStop) R.string.runelight_stop else R.string.runelight_start)
         lightingTile.contentDescription = getString(if (canStop) R.string.runelight_stop else R.string.runelight_start)
-        status.setText(when {
-            LEDService.outputAvailable == false -> R.string.runelight_output_unavailable
-            startError -> R.string.runelight_start_failed
-            else -> R.string.runelight_ambient_pending
-        })
+        val error = when {
+            runtime?.failure == LightingFailure.OUTPUT_UNAVAILABLE -> R.string.runelight_output_unavailable
+            runtime?.failure == LightingFailure.START_FAILED || startError -> R.string.runelight_start_failed
+            runtime?.phase == LightingPhase.STOPPED && !starting && LightingIntentStore(this).wantedRunning -> R.string.runelight_interrupted
+            else -> null
+        }
+        status.visibility = if (error == null) View.GONE else View.VISIBLE
+        error?.let(status::setText)
     }
 }

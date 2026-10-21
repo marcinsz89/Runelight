@@ -4,7 +4,6 @@
     <color name="runelight_text">#24222D</color>
     <color name="runelight_secondary">#686473</color>
     <color name="runelight_accent">#7053C7</color>
-    <color name="runelight_selected">#E5DEF3</color>
 
     <style name="Theme.Runelight" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/runelight_accent</item>
@@ -32,7 +31,8 @@
     </style>
     <style name="RunelightEffect" parent="Widget.Material3.Button.OutlinedButton">
         <item name="backgroundTint">@color/runelight_effect_background</item>
-        <item name="android:textColor">@color/runelight_text</item>
+        <item name="android:textColor">@color/runelight_effect_text</item>
+        <item name="android:textStyle">bold</item>
         <item name="strokeWidth">0dp</item>
         <item name="cornerRadius">10dp</item>
         <item name="android:layout_width">0dp</item>
@@ -53,25 +53,35 @@
     <string name="runelight_stop">Stop lighting</string>
     <string name="runelight_starting">Starting…</string>
     <string name="runelight_on">On</string>
+    <string name="runelight_off">Off</string>
     <string name="runelight_output_unavailable">LED control unavailable</string>
     <string name="runelight_start_failed">Couldn’t start lighting. Try again.</string>
+    <string name="runelight_interrupted">Lighting stopped. Tap Start to resume.</string>
     <string name="runelight_ambient">Ambient</string>
     <string name="runelight_solid">Solid</string>
     <string name="runelight_rainbow">Rainbow</string>
     <string name="runelight_breathing">Breathing</string>
     <string name="runelight_pulse">Pulse</string>
-    <string name="runelight_brightness">Brightness</string>
+    <string name="runelight_left">Left</string>
+    <string name="runelight_right">Right</string>
+    <string name="runelight_left_level">Left brightness</string>
+    <string name="runelight_right_level">Right brightness</string>
+    <string name="runelight_drag_color_hint">Drag · Tap for color</string>
+    <string name="runelight_drag_level_hint">Drag to adjust</string>
+    <string name="runelight_color_wheel">Choose hue and saturation</string>
+    <string name="runelight_copy_left">Copy left</string>
+    <string name="runelight_copy_right">Copy right</string>
+    <string name="runelight_copy_left_settings">Copy left color and brightness</string>
+    <string name="runelight_copy_right_settings">Copy right color and brightness</string>
     <string name="runelight_percent">%1$d%%</string>
     <string name="runelight_sound">React to sound</string>
+    <string name="runelight_sound_unavailable">React to sound. Not available in this build.</string>
     <string name="runelight_not_available">Not available in this build</string>
-    <string name="runelight_ambient_pending">Ambient capture is being rebuilt.</string>
+    <string name="runelight_ambient_unavailable">Ambient. Not available in this build.</string>
     <string name="runelight_appearance">Switch light or dark appearance</string>
     <string name="runelight_appearance_symbol">◐</string>
     <string name="runelight_left_color">Left color</string>
     <string name="runelight_right_color">Right color</string>
-    <string name="runelight_red">Red</string>
-    <string name="runelight_green">Green</string>
-    <string name="runelight_blue">Blue</string>
     <string name="runelight_apply_color">Apply color</string>
     <string name="runelight_cancel_color">Cancel</string>
     <string name="runelight_speed">Speed</string>

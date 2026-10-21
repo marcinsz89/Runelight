@@ -64,12 +64,7 @@ class BreathAnimation(
             val rg = (Color.green(currentRightColor) * breathFactor).roundToInt().coerceIn(0, 255)
             val rb = (Color.blue(currentRightColor) * breathFactor).roundToInt().coerceIn(0, 255)
 
-            ledController.setLedColor(lr, lg, lb,
-                leftTop = true, leftBottom = true,
-                rightTop = false, rightBottom = false)
-            ledController.setLedColor(rr, rg, rb,
-                leftTop = false, leftBottom = false,
-                rightTop = true, rightBottom = true)
+            ledController.setLedColorDual(lr, lg, lb, rr, rg, rb)
 
             val speedFactor = 0.02 + 0.18 * speed
             phase += speedFactor
@@ -84,9 +79,14 @@ class BreathAnimation(
         handler.post(runnable)
     }
 
-    override fun stop() {
+    override fun stop() = stop(clearOutput = true)
+
+    override fun stopForHandoff() = stop(clearOutput = false)
+
+    private fun stop(clearOutput: Boolean) {
         running = false
         handler.removeCallbacksAndMessages(null)
+        if (!clearOutput) return
         ledController.setLedColor(
             0,
             0,

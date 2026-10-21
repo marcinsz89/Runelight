@@ -6,22 +6,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
-    <!-- Keep the LED pipeline warm while a PIPBOY override is active so the
-         first action after idle isn't delayed by CPU power-down. -->
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
     <!-- Plugin store: fetch the catalogue + download bundles. -->
     <uses-permission android:name="android.permission.INTERNET" />
-
-    <permission
-        android:name="${applicationId}.permission.CONTROL_LEDS"
-        android:label="@string/perm_control_leds_label"
-        android:description="@string/perm_control_leds_desc"
-        android:protectionLevel="normal" />
-
-    <uses-permission android:name="${applicationId}.permission.CONTROL_LEDS" />
 
 
     <queries>
@@ -81,7 +68,7 @@
             android:exported="false">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Persistent LED control with accessibility-based screen capture" />
+                android:value="User-controlled lighting for the device’s integrated LEDs" />
         </service>
 
         <service
@@ -114,59 +101,13 @@
         <service
             android:name=".services.BifrostTileService"
             android:exported="true"
-            android:icon="@drawable/ic_notification_small"
-            android:label="Bifrost"
+            android:icon="@drawable/ic_runelight"
+            android:label="@string/app_name"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
             </intent-filter>
         </service>
-
-        <receiver
-            android:name=".receivers.BootReceiver"
-            android:enabled="true"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
-            </intent-filter>
-        </receiver>
-
-        <receiver
-            android:name=".receivers.ScheduleReceiver"
-            android:enabled="true"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.moonbench.bifrost.action.SCHEDULE_TICK" />
-                <action android:name="android.intent.action.TIME_SET" />
-                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
-            </intent-filter>
-        </receiver>
-
-        <receiver
-            android:name=".external.ExternalApiReceiver"
-            android:enabled="true"
-            android:exported="true"
-            android:permission="${applicationId}.permission.CONTROL_LEDS">
-            <intent-filter>
-                <action android:name="com.moonbench.bifrost.api.ACTION_DISPLAY" />
-                <action android:name="com.moonbench.bifrost.api.ACTION_CLEAR" />
-                <action android:name="com.moonbench.bifrost.api.ACTION_INSTALL_PROFILE" />
-                <action android:name="com.moonbench.bifrost.api.ACTION_UNINSTALL_PROFILE" />
-                <action android:name="com.moonbench.bifrost.api.ACTION_QUERY_PLUGIN" />
-                <action android:name="com.moonbench.bifrost.api.ACTION_PULSE" />
-            </intent-filter>
-        </receiver>
-
-        <receiver
-            android:name=".receivers.PackageRemovedReceiver"
-            android:enabled="true"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.PACKAGE_FULLY_REMOVED" />
-                <data android:scheme="package" />
-            </intent-filter>
-        </receiver>
 
     </application>
 

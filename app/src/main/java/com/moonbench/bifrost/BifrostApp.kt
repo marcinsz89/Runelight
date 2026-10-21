@@ -1,8 +1,7 @@
 package com.moonbench.bifrost
 
 import android.app.Application
-import android.content.Context
-import com.moonbench.bifrost.presets.PresetMigration
+import com.moonbench.bifrost.schedule.ScheduleAlarms
 import com.moonbench.bifrost.tools.CrashReporter
 
 class BifrostApp : Application() {
@@ -11,7 +10,9 @@ class BifrostApp : Application() {
         super.onCreate()
         CrashReporter.install(this)
         runCatching {
-            PresetMigration.run(getSharedPreferences("bifrost_prefs", Context.MODE_PRIVATE))
+            // Retire any alarm registered by the earlier internal builds. This
+            // cancels only Runelight's schedule PendingIntent, not device alarms.
+            ScheduleAlarms.cancel(this)
         }
     }
 }

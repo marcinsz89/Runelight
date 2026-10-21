@@ -6,6 +6,12 @@ baseline is Bifrost 1.3.1, `1baddf1644ff0d7edd1bd0f4ba02f7eb6c8e3cfa`.
 
 ## Product direction
 
+Latest control refinement: the native configuration uses two rounded Left/Right
+color tiles with independent vertical brightness adjustment, replacing the
+global slider and scrolling controls. Tapping opens an inline color wheel with
+live draft preview and Copy-other-side/Cancel/Apply. See the current
+[design behavior](design/README.md); historical mockups retain earlier layouts.
+
 A reliable, low-overhead Thor Max LED utility with a simple interface that fits
 the lower display well, also works on top, and survives moving/recreating its UI.
 The owner selected **Quick tiles**, then requested a distinct Runelight identity
@@ -14,19 +20,29 @@ with a light-related rune. See [the saved design](design/README.md).
 POC scope discussed:
 
 - Ambient, Solid, Rainbow, Breathing and Pulse.
+- Ambient Custom Sampling: a center HomeKit-style **Whole screen** toggle,
+  sampling the full image halves when On and edge regions when Off. Preserve
+  independent Left/Right levels; changing sampling must not restart capture.
 - An independent **React to sound** option on every effect, with one sensitivity
   control. The effect supplies color/animation; sound modulates intensity.
 - Direct effect/brightness controls, relevant per-effect controls, explicit
   capture source, dark/light appearance, last-used settings and Start/Stop.
 - Service continuation after normal UI dismissal, honest capture/audio/hardware
   status and a foreground notification with Stop.
+- A Notification Center button shortcut for quick access to Runelight.
 - Top and bottom capture only through a backend that demonstrably supports the
   selected source; a clear unavailable state instead of pretending it works.
 
 Deferred from the POC: preset libraries, app profiles, schedules, plugins,
 external API, wallpapers, artwork, import/export workflows, boot auto-start,
-battery/temperature effects and unsafe performance profiles. Quick Settings
-integration can follow the core; its existing lint issue must be resolved if kept.
+battery/temperature effects and unsafe performance profiles. Add the Notification
+Center shortcut after core controls stabilize; resolve the existing Quick Settings
+lint issue if that component is reused.
+
+Optional later convenience: a compact home-screen widget with Lighting On/Off
+and the current effect. A visible widget is not a keep-alive mechanism; engine
+operation must remain independent of widgets, notifications and the Activity.
+This is a brainstorming item, not an added POC requirement.
 
 ## Minimum setup and reference research
 
@@ -49,10 +65,131 @@ another app's service or configuration features.
   for demonstrated OEM interference. Treat task swipe, process reclaim, Android
   Active apps Stop and Settings Force Stop as different cases.
 
-The UI has reached the point where the keep/remove/freeze inventory can begin
-before the next engine changes. Prioritize plain-effect lifetime/output, then a
-bounded capture-capability experiment, then Ambient/audio ownership. The full
-cleanup exit remains required before POC completion.
+The UI has reached the point where the keep/remove/freeze inventory can begin.
+Run the small capture-capability experiment below before committing to a backend;
+it need not wait for the whole cleanup or a service rewrite. Then stabilize
+plain-effect lifetime/output before integrating Ambient/audio. The full cleanup
+exit remains required before POC completion.
+
+## Next work — prove capture, then implement Ambient
+
+The [debug capture experiment](ambient-probe-2026-10-20.md) now proves top
+MediaProjection, explicit top/bottom Accessibility sampling, corrected sizing,
+sound-off continuity and clean Stop. Follow-up tests now prove quiet/loud/silent
+playback from a separate test-app UID, coexistence with bottom screenshots,
+Home/reopen and ADB UI movement with a retained session, screenshot-permission
+loss, cancelled consent and fresh-consent recovery. Bottom projection remains
+unproven. An overlapping projection replacement was followed by a framework
+watchdog restart. The bounded ownership/output work below now passes; proceed to
+the top Ambient slice and validate a representative
+game and actual Pathfinder shortcut before reliability acceptance. Do not repeat
+the broad research pass or enable production Ambient from service startup alone.
+
+Planning update after native UI baseline commit `53b8cbd`. We know the intended
+pipeline and failure rules; not all required capture/audio combinations have
+been demonstrated on the owner's Thor. Further broad repository research is not a
+prerequisite. The remaining investigation is a bounded device experiment.
+
+The normal first use case is **controls on the lower screen, Ambient sampling
+the game on the top screen**. Moving the controls does not change the source.
+Top capture should become the first working Ambient slice; the complete POC
+still requires an honest decision about bottom support.
+
+### 1. Capture capability probe — scoped experiment completed
+
+Use an isolated debug-only probe, not the old onboarding/production Ambient path.
+Declare its temporary components only in the debug source set; do not enable
+Ambient in the normal UI merely because the probe starts a service. The probe
+must own and release its own resources, reject late callbacks, have an explicit
+Stop, and never send LED commands. Record only bounded diagnostics/aggregate
+measurements locally, with no screen/audio recordings or uploads.
+
+| Question | Experiment / evidence required |
+|---|---|
+| Which panel does ordinary MediaProjection capture? | Distinct known top/bottom test patterns; independently change each pattern. Launch/move the probe UI on either panel and verify sampled colors, not just output dimensions or virtual-display existence. |
+| Can bottom be sampled through a supported low-setup path? | Test normal projection first; if the source cannot be selected, test explicit Accessibility screenshot capture on each runtime-discovered logical display. Record setup, errors and actual achievable cadence. No root, shell capture or hidden API as a product dependency. |
+| Can sound coexist without replacing capture? | After applicable runtime permission/consent, use known capturable playback and then a representative game. Test projection video + playback audio, and Accessibility screenshots + playback audio if that backend is needed. Verify video source and audio levels independently. |
+| Does the session survive ordinary UI changes? | Home/reopen and move the controls while capturing. Then revoke consent, turn panels off individually and Stop. Observe resource/session state and failure reason; keep startup waits/retries bounded. |
+
+Deliver a small capability table: backend, source, UI display, sound state,
+required prompts/settings, measured sampling cadence/latency, errors and result.
+If bottom capture is unavailable or needs Accessibility, say so explicitly; keep
+the top path usable. Do not choose the final backend from emulator results.
+
+### 2. Stabilize ownership and remove retired runtime hooks
+
+Finish the keep/remove/freeze inventory, trace shared types, and remove obsolete
+entry points as their dependencies are separated. Keep each deletion/build check
+small; do not rewrite the whole service or driver in one change.
+
+The [cleanup inventory](cleanup-inventory.md) records current entry points,
+shared dependencies and removal boundaries. Its first bounded ownership change
+addresses delayed Stop cleanup, old output writers, task closure and Solid idle
+work. The [state/policy increment](service-state-2026-10-21.md) now adds durable
+wanted-running intent, observable runtime state and removal of active legacy
+policies/startup receivers. Plain-effect regressions pass; implement top Ambient
+next. Full legacy source/resource removal and process-loss acceptance remain open.
+See the [ownership/handoff results](service-ownership-2026-10-21.md), including
+the still-open lower-screen Home/sleep/wake restoration issue and matched tests
+with Bifrost debug and Settings.
+
+Establish:
+
+- Service-owned resources and observable state; separate saved configuration
+  from wanted-running intent and current resource state.
+- Serialized Start/Stop/replacement and one LED writer; old cleanup/callbacks
+  cannot affect a new session. Explicit Stop remains final.
+- Correct independent four-zone frames, bounded hardware errors, immediate off
+  and no repeated writes once Solid settles.
+
+Verify these on plain effects before connecting capture to hardware. Existing
+native UI smoke passes do not satisfy these engine requirements.
+
+### 3. Implement the top Ambient slice
+
+Pipeline: selected-source capture → aspect-correct small sample grid → left/right
+color targets → time-based smoothing → optional sound intensity → global
+per-side brightness → serialized changed-frame output.
+
+- Use a small aspect-correct grid as the starting point; measure its size/rate
+  rather than inheriting 2×1 capture or exposing performance profiles. Respect
+  source cropping/rotation and image row/pixel strides. Test letterboxing and
+  grayscale/magenta/black; exclude bars without making genuine black glow.
+- Sampling updates the held target. Smoothing continues toward it independently
+  of whether a new frame arrived, then becomes idle when output settles.
+  Brightness changes apply to the held target immediately. Do not apply brightness
+  or gamma twice. Black must remain exactly zero through every stage.
+- Unchanged content is valid. Absence of a changed frame alone must not be called
+  capture failure; use session callbacks, explicit errors and bounded startup/
+  in-flight checks. Keep black content separate from missing/failed capture.
+- Preserve valid capture across Activity recreation and parameter edits. Show
+  Running only after successful startup/first valid sample and usable output.
+  On capture loss, clear output and show reconnect; no silent backend fallback.
+- Select capture machinery internally. Expose only source and response as the
+  immediate Ambient controls; keep setup contextual and optional for other modes.
+
+Android's [projection lifecycle](https://developer.android.com/media/grow/media-projection)
+defines consent, invalidation and resize behavior. In particular, Android 14+
+single-use rules are a separate compatibility check from Thor Android 13.
+[Accessibility screenshots](https://developer.android.com/reference/android/accessibilityservice/AccessibilityService#takeScreenshot(int,%20java.util.concurrent.Executor,%20android.accessibilityservice.AccessibilityService.TakeScreenshotCallback))
+take an explicit logical display ID; a successful source-specific Thor test is
+still required before relying on that path.
+
+### 4. Bottom source, sound overlay and acceptance
+
+Integrate only combinations demonstrated by the probe. Sound modulates the
+selected effect without replacing it; denied/failed sound leaves the base effect
+usable with honest feedback. Playback requires the permissions and source-app
+policy described in [Android's capture requirements](https://developer.android.com/media/platform/av-capture).
+Some silence is legitimate; do not label every zero level as a permission error.
+
+Run pure sampling/envelope/frame regressions, Android resource/lifecycle tests
+and actual Thor output checks. Include distinct L/R colors, exact black/off,
+held-frame convergence, source/UI independence, capture revoke/reconnect, late
+callbacks after Stop, sound toggling, Pathfinder, sleep/wake and normal battery
+settings. Finish the planned two-hour game/performance runs before calling the
+POC reliable. Cadence, response/sensitivity and silence-floor tuning are measured
+implementation choices; no additional research project is needed to start.
 
 ## Proposed ownership, before changing architecture
 
@@ -225,6 +362,10 @@ work is now partially implemented in a separate native Quick tiles entry point.
 See [the native UI slice](native-ui-increment.md) for its scope and checks.
 Solid, Rainbow, Breathing and Pulse reuse the inherited engine; Ambient and the
 independent sound overlay remain unavailable in this internal build. The
-five-effect POC scope is unchanged. Driver idle/per-zone fixes, durable running
-intent, full engine failure feedback and retirement of legacy components are
-still required; the first increment is not complete yet.
+five-effect POC scope is unchanged. Driver idle/per-zone fixes, plain-effect
+handoff, durable wanted intent and observed first-output/failure state are now
+implemented and tested in bounded runs. Active legacy service policies and four
+startup/API receiver registrations are removed. See the
+[current state report](service-state-2026-10-21.md). Production capture/audio,
+remaining legacy component cleanup and the full device acceptance matrix are
+still required; the POC is not complete.

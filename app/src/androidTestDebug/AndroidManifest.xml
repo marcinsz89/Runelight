@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application android:allowAudioPlaybackCapture="true">
+        <!-- Runs in the test APK's own UID, independently of instrumentation. -->
+        <activity android:name="com.moonbench.bifrost.probe.TonePlaybackFixtureActivity"
+            android:exported="true" android:resizeableActivity="true"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
+    </application>
+</manifest>

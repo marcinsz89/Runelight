@@ -20,6 +20,9 @@ abstract class LedAnimation(protected val ledController: LedController) {
     abstract fun start()
     abstract fun stop()
 
+    /** End this effect's callbacks while the service hands output to another effect. */
+    open fun stopForHandoff() = stop()
+
     open fun setTargetColor(color: Int) {}
     open fun setTargetRightColor(color: Int) {}
     open fun setFadeEndColor(color: Int) {}

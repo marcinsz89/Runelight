@@ -74,6 +74,7 @@ dependencies {
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.material3)
+    implementation(libs.colorpicker)
     testImplementation(libs.junit)
     // Real org.json on the JVM test classpath (Android's is a throwing stub),
     // so plugin-catalogue parsing can be unit-tested.

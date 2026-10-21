@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <application>
+        <activity android:name=".probe.CaptureProbeActivity" android:exported="true"
+            android:launchMode="singleTop" android:theme="@android:style/Theme.Material.NoActionBar" />
+        <activity android:name=".probe.ProbeFixtureActivity" android:exported="true"
+            android:resizeableActivity="true" android:theme="@android:style/Theme.Material.NoActionBar" />
+        <service android:name=".probe.CaptureProbeService" android:exported="false"
+            android:foregroundServiceType="mediaProjection|specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Debug-only bounded display capture capability experiment" />
+        </service>
+        <service android:name=".probe.ProbeAccessibilityService" android:exported="true"
+            android:label="Runelight debug capture probe"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter><action android:name="android.accessibilityservice.AccessibilityService" /></intent-filter>
+            <meta-data android:name="android.accessibilityservice" android:resource="@xml/probe_accessibility" />
+        </service>
+    </application>
+</manifest>

@@ -15,6 +15,12 @@
   Design for the lower screen first and support the top screen and UI movement.
 - Use the selected Quick tiles design and Dagaz mark, with Runelight's own
   styling. No preset requirement to change a look.
+- Current lower-screen controls do not scroll: full-tile Lighting/sound toggles,
+  an accent effect strip, and Left/Right tiles dragged for independent brightness
+  or tapped for color. Animated effects show a matching vertical Speed tile in
+  the middle. Normal status is quiet; show actionable errors only. The inline
+  wheel replaces configuration while keeping
+  Stop visible. Copy-other-side includes color and brightness as a draft.
 - Use plain product labels: Lighting, Start/Stop, effect, brightness and sound.
   Do not expose inherited names such as "Call Heimdall" or "Ragnarok" in the POC.
 - The native entry point is `RunelightActivity`; application ID is
@@ -61,6 +67,9 @@
 - Report commands, actual results and unrun/blocked tests. Emulator success does
   not establish Thor reliability. Redact logs; preserve exact APK/version/mapping
   when diagnosing obfuscated traces. Keep local evidence in ignored locations.
+- Do not run ordinary `uiautomator dump` during Accessibility capture: default
+  UiAutomation suppresses enabled services. Use ADB aggregate reports, or obtain
+  UiAutomation with `FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES` in a scoped test.
 
 ## Engine and lifecycle invariants
 
@@ -70,9 +79,15 @@
   Background continuation must not depend on boot start or the external API.
 - Separate saved configuration/wanted-running intent from runtime resources.
   Never persist capture grants, external leases or live recorder/display objects.
+  `LightingIntentStore` owns durable intent; `LEDService.state` owns observed
+  runtime. Only explicit native Start starts an effect. UI recreation, parameter
+  edits and old boot/API/null starts cannot restore it after interruption.
 - One active effect owns output; one serialized driver applies complete per-zone
   frames. Preserve both sticks, both zones and distinct colors when batching.
   Static output becomes idle after settling; suppress unchanged final frames.
+- Plain-effect handoff cancels old callbacks and holds output until the new
+  effect supplies a frame. Explicit Stop clears/closes output; closed drivers
+  cannot write into a replacement service session.
 - Keep the latest sampled target and let smoothing converge even if new input
   frames are identical. True black stays zero through brightness/audio processing.
 - Sound modulates the selected effect's intensity; it is not a separate effect
@@ -86,8 +101,10 @@
   misattributing that restriction to the owner's Android 13 launch incident.
 - Dialogs follow the host lifecycle. Teardown is not a user acknowledgement.
   Activity moves/recreation must preserve settings and must not restart capture.
-  The new color editor stays inline; preserve drafts through recreation and apply
-  only on an explicit Apply action. Prefer avoiding additional windows.
+  The color editor stays inline; preserve drafts through recreation. Preview
+  only while lighting is already running; Cancel/Back/UI closure restores saved
+  values, Apply persists them, and explicit Stop suppresses queued previews.
+  Prefer avoiding additional windows.
 - Treat missing vendor binder/output capability as a real failure; a service
   object alone is not evidence that capture or LEDs are operating.
 

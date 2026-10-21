@@ -23,7 +23,7 @@ class PulseAnimation(
     private var currentRightColor: Int = initialRightColor
     private var targetBrightness: Int = 255
     private var speed: Float = 0.5f
-    private var isOn = false
+    private var isOn = true
     private var counter = 0
 
     override fun setTargetColor(color: Int) {
@@ -62,12 +62,7 @@ class PulseAnimation(
             val rg = (Color.green(currentRightColor) * factor).roundToInt().coerceIn(0, 255)
             val rb = (Color.blue(currentRightColor) * factor).roundToInt().coerceIn(0, 255)
 
-            ledController.setLedColor(lr, lg, lb,
-                leftTop = true, leftBottom = true,
-                rightTop = false, rightBottom = false)
-            ledController.setLedColor(rr, rg, rb,
-                leftTop = false, leftBottom = false,
-                rightTop = true, rightBottom = true)
+            ledController.setLedColorDual(lr, lg, lb, rr, rg, rb)
 
             counter++
             if (counter >= pulseDuration) {
@@ -85,9 +80,14 @@ class PulseAnimation(
         handler.post(runnable)
     }
 
-    override fun stop() {
+    override fun stop() = stop(clearOutput = true)
+
+    override fun stopForHandoff() = stop(clearOutput = false)
+
+    private fun stop(clearOutput: Boolean) {
         running = false
         handler.removeCallbacksAndMessages(null)
+        if (!clearOutput) return
         ledController.setLedColor(
             0,
             0,

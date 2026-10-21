@@ -1,10 +1,16 @@
 package com.moonbench.bifrost
 
 import android.app.ActivityOptions
+import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.hardware.display.DisplayManager
+import android.graphics.Color
+import android.os.Bundle
 import android.view.Display
+import android.view.View
+import android.view.MotionEvent
+import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.core.app.ActivityScenario
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.assertion.ViewAssertions.matches
@@ -16,9 +22,12 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.moonbench.bifrost.services.LEDService
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.slider.Slider
+import com.moonbench.bifrost.ui.ColorLevelTile
+import com.skydoves.colorpickerview.ColorPickerView
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import com.moonbench.bifrost.animations.LedAnimationType
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -62,12 +71,130 @@ class RunelightActivityTest {
     fun draftColorSurvivesRecreationWithoutBeingApplied() {
         val prefs = context.getSharedPreferences("runelight_controls", Context.MODE_PRIVATE)
         launchOnActiveDisplay().use { scenario ->
-            scenario.onActivity { it.findViewById<MaterialButton>(R.id.quickLeftColor).performClick() }
-            scenario.onActivity { it.findViewById<Slider>(R.id.quickRed).value = 10f }
+            scenario.onActivity { it.findViewById<ColorLevelTile>(R.id.quickLeftColor).performClick() }
+            scenario.onActivity { it.findViewById<ColorPickerView>(R.id.quickColorPicker).fireColorListener(Color.CYAN, true) }
             scenario.recreate()
             onView(withId(R.id.lightingTile)).check(matches(isDisplayed()))
-            scenario.onActivity { assertEquals(10f, it.findViewById<Slider>(R.id.quickRed).value) }
+            onView(withId(R.id.quickColorHex)).check(matches(withText("#00FFFF")))
+            onView(withId(R.id.quickApplyColor)).check(matches(isDisplayed()))
             assertFalse(prefs.contains("leftColor"))
+            assertFalse(LEDService.isRunning)
+        }
+    }
+
+    @Test
+    fun independentLevelsPersistWithoutStartingLighting() {
+        launchOnActiveDisplay().use { scenario ->
+            scenario.onActivity { activity ->
+                for ((id, value) in listOf(R.id.quickLeftColor to 20, R.id.quickRightColor to 80)) {
+                    val args = Bundle().apply { putFloat(AccessibilityNodeInfo.ACTION_ARGUMENT_PROGRESS_VALUE, value.toFloat()) }
+                    activity.findViewById<ColorLevelTile>(id).performAccessibilityAction(
+                        AccessibilityNodeInfo.AccessibilityAction.ACTION_SET_PROGRESS.id, args)
+                }
+            }
+            scenario.recreate()
+            scenario.onActivity {
+                assertEquals(20, it.findViewById<ColorLevelTile>(R.id.quickLeftColor).level)
+                assertEquals(80, it.findViewById<ColorLevelTile>(R.id.quickRightColor).level)
+            }
+            assertFalse(LEDService.isRunning)
+        }
+    }
+
+    @Test
+    fun centerSpeedTileIsModeSpecificAndRetainsItsOwnValue() {
+        launchOnActiveDisplay().use { scenario ->
+            scenario.onActivity { activity ->
+                assertEquals(View.GONE, activity.findViewById<View>(R.id.quickSpeed).visibility)
+                activity.findViewById<MaterialButton>(R.id.effectBreathing).performClick()
+                val tile = activity.findViewById<ColorLevelTile>(R.id.quickSpeed)
+                assertEquals(View.VISIBLE, tile.visibility)
+                tile.performAccessibilityAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SET_PROGRESS.id,
+                    Bundle().apply { putFloat(AccessibilityNodeInfo.ACTION_ARGUMENT_PROGRESS_VALUE, 75f) })
+                assertEquals(40, activity.findViewById<ColorLevelTile>(R.id.quickLeftColor).level)
+                assertEquals(40, activity.findViewById<ColorLevelTile>(R.id.quickRightColor).level)
+            }
+            scenario.recreate()
+            scenario.onActivity { assertEquals(75, it.findViewById<ColorLevelTile>(R.id.quickSpeed).level) }
+            assertFalse(LEDService.isRunning)
+        }
+    }
+
+    @Test
+    fun runningModeChangesReachTheRequestedAnimationAndStop() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        instrumentation.uiAutomation.grantRuntimePermission(context.packageName, Manifest.permission.POST_NOTIFICATIONS)
+        fun awaitMode(mode: LedAnimationType?) {
+            val deadline = android.os.SystemClock.elapsedRealtime() + 5000
+            var matched = false
+            while (android.os.SystemClock.elapsedRealtime() < deadline && !matched) {
+                instrumentation.runOnMainSync {
+                    matched = if (mode == null) !LEDService.isRunning else LEDService.isRunning && LEDService.runningEffect == mode
+                }
+                if (!matched) Thread.sleep(25)
+            }
+            assertTrue("Animation did not reach $mode", matched)
+        }
+        launchOnActiveDisplay().use { scenario ->
+            try {
+                scenario.onActivity { it.findViewById<View>(R.id.lightingTile).performClick() }
+                awaitMode(LedAnimationType.STATIC)
+                for ((button, mode) in listOf(
+                    R.id.effectRainbow to LedAnimationType.RAINBOW,
+                    R.id.effectBreathing to LedAnimationType.BREATH,
+                    R.id.effectPulse to LedAnimationType.PULSE,
+                    R.id.effectSolid to LedAnimationType.STATIC
+                )) {
+                    scenario.onActivity { it.findViewById<MaterialButton>(button).performClick() }
+                    awaitMode(mode)
+                }
+            } finally {
+                context.stopService(Intent(context, LEDService::class.java))
+                awaitMode(null)
+            }
+        }
+    }
+
+    @Test
+    fun verticalDragChangesOnlyItsSideWithoutOpeningColorEditor() {
+        launchOnActiveDisplay().use { scenario ->
+            scenario.onActivity { activity ->
+                val tile = activity.findViewById<ColorLevelTile>(R.id.quickLeftColor)
+                val now = android.os.SystemClock.uptimeMillis()
+                for ((action, fraction) in listOf(MotionEvent.ACTION_DOWN to 0.75f, MotionEvent.ACTION_MOVE to 0.5f, MotionEvent.ACTION_UP to 0.5f)) {
+                    val event = MotionEvent.obtain(now, now + 20, action, tile.width / 2f, tile.height * fraction, 0)
+                    try { tile.dispatchTouchEvent(event) } finally { event.recycle() }
+                }
+                assertEquals(65, tile.level)
+                assertEquals(40, activity.findViewById<ColorLevelTile>(R.id.quickRightColor).level)
+                assertEquals(View.GONE, activity.findViewById<View>(R.id.quickColorEditor).visibility)
+            }
+            assertFalse(LEDService.isRunning)
+        }
+    }
+
+    @Test
+    fun copiedColorAndLevelStayDraftUntilApplyAndSurviveRecreation() {
+        val prefs = context.getSharedPreferences("runelight_controls", Context.MODE_PRIVATE)
+        launchOnActiveDisplay().use { scenario ->
+            scenario.onActivity { activity ->
+                activity.findViewById<ColorLevelTile>(R.id.quickRightColor).performAccessibilityAction(
+                    AccessibilityNodeInfo.AccessibilityAction.ACTION_SET_PROGRESS.id,
+                    Bundle().apply { putFloat(AccessibilityNodeInfo.ACTION_ARGUMENT_PROGRESS_VALUE, 80f) })
+                activity.findViewById<ColorLevelTile>(R.id.quickLeftColor).performClick()
+                activity.findViewById<MaterialButton>(R.id.quickCopyOther).performClick()
+                assertEquals(40, prefs.getInt("leftBrightness", -1))
+                activity.findViewById<MaterialButton>(R.id.quickCancelColor).performClick()
+                assertEquals(40, activity.findViewById<ColorLevelTile>(R.id.quickLeftColor).level)
+                activity.findViewById<ColorLevelTile>(R.id.quickLeftColor).performClick()
+                activity.findViewById<MaterialButton>(R.id.quickCopyOther).performClick()
+            }
+            scenario.recreate()
+            onView(withId(R.id.quickColorLevel)).check(matches(withText("80%")))
+            scenario.onActivity { it.findViewById<MaterialButton>(R.id.quickApplyColor).performClick() }
+            assertEquals(prefs.getInt("rightColor", 0), prefs.getInt("leftColor", 1))
+            assertEquals(80, prefs.getInt("leftBrightness", -1))
+            assertEquals(80, prefs.getInt("rightBrightness", -1))
             assertFalse(LEDService.isRunning)
         }
     }

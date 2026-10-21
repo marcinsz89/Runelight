@@ -1,164 +1,250 @@
-<?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/runelightRoot"
-    android:layout_width="match_parent" android:layout_height="match_parent"
-    android:orientation="vertical" android:padding="16dp">
-
-    <LinearLayout android:layout_width="match_parent" android:layout_height="48dp"
-        android:orientation="horizontal" android:gravity="center_vertical">
-        <ImageView android:layout_width="32dp" android:layout_height="32dp"
-            android:importantForAccessibility="no" app:srcCompat="@drawable/ic_runelight" />
-        <TextView android:layout_width="0dp" android:layout_height="wrap_content"
-            android:layout_weight="1" android:layout_marginStart="10dp"
-            android:text="@string/app_name" android:textColor="@color/runelight_text"
-            android:textSize="22sp" android:textStyle="bold" />
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <ImageView
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:importantForAccessibility="no"
+            app:srcCompat="@drawable/ic_runelight" />
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="10dp"
+            android:text="@string/app_name"
+            android:textColor="@color/runelight_text"
+            android:textSize="22sp"
+            android:textStyle="bold" />
         <com.google.android.material.button.MaterialButton
             android:id="@+id/appearanceButton" style="@style/Widget.Material3.Button.TextButton"
-            android:layout_width="48dp" android:layout_height="48dp"
-            android:minWidth="0dp" android:padding="0dp" android:text="@string/runelight_appearance_symbol"
-            android:textSize="24sp" android:contentDescription="@string/runelight_appearance" />
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:minWidth="0dp"
+            android:padding="0dp"
+            android:text="@string/runelight_appearance_symbol"
+            android:textSize="24sp"
+            android:contentDescription="@string/runelight_appearance" />
     </LinearLayout>
-
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:layout_marginTop="8dp" android:orientation="horizontal" android:baselineAligned="false">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal"
+        android:baselineAligned="false">
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/lightingTile" style="@style/RunelightCard"
-            android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
-            android:layout_marginEnd="6dp" android:clickable="true" android:focusable="true">
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:orientation="vertical" android:padding="16dp" android:minHeight="104dp">
-                <TextView style="@style/RunelightLabel" android:text="@string/runelight_lighting" />
-                <TextView android:id="@+id/lightingState"
-                    android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp" android:text="@string/runelight_stopped"
-                    android:textColor="@color/runelight_text" android:textSize="26sp" android:textStyle="bold" />
-                <TextView android:id="@+id/lightingAction" style="@style/RunelightLabel"
-                    android:layout_marginTop="4dp" android:text="@string/runelight_start" />
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:layout_marginEnd="6dp"
+            android:clickable="true"
+            android:focusable="true">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:duplicateParentState="true"
+                android:background="@drawable/runelight_toggle_surface"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:minHeight="104dp">
+                <TextView style="@style/RunelightLabel"
+                    android:text="@string/runelight_lighting"
+                    android:duplicateParentState="true"
+                    android:textColor="@color/runelight_toggle_secondary" />
+                <TextView
+                    android:id="@+id/lightingState"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/runelight_stopped"
+                    android:duplicateParentState="true"
+                    android:textColor="@color/runelight_toggle_text"
+                    android:textSize="26sp"
+                    android:textStyle="bold" />
+                <TextView
+                    android:id="@+id/lightingAction" style="@style/RunelightLabel"
+                    android:duplicateParentState="true"
+                    android:textColor="@color/runelight_toggle_secondary"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/runelight_start" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
         <com.google.android.material.card.MaterialCardView
-            style="@style/RunelightCard" android:layout_width="0dp"
-            android:layout_height="match_parent" android:layout_weight="1" android:layout_marginStart="6dp">
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:orientation="horizontal" android:gravity="center_vertical"
-                android:padding="16dp" android:minHeight="104dp">
-                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
-                    android:layout_weight="1" android:orientation="vertical" android:layout_marginEnd="8dp">
-                    <TextView style="@style/RunelightLabel" android:text="@string/runelight_sound"
-                        android:textColor="@color/runelight_text" />
-                    <TextView style="@style/RunelightLabel" android:layout_marginTop="4dp"
-                        android:text="@string/runelight_not_available" android:textSize="12sp" />
-                </LinearLayout>
-                <com.google.android.material.materialswitch.MaterialSwitch
-                    android:layout_width="wrap_content" android:layout_height="48dp"
-                    android:enabled="false" android:checked="false" android:contentDescription="@string/runelight_sound" />
+            android:id="@+id/soundTile" style="@style/RunelightCard"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:layout_marginStart="6dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:enabled="false"
+            android:contentDescription="@string/runelight_sound_unavailable">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:duplicateParentState="true"
+                android:background="@drawable/runelight_toggle_surface"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:minHeight="104dp">
+                <TextView style="@style/RunelightLabel"
+                    android:text="@string/runelight_sound"
+                    android:duplicateParentState="true"
+                    android:textColor="@color/runelight_toggle_secondary" />
+                <TextView
+                    android:id="@+id/soundState"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/runelight_off"
+                    android:duplicateParentState="true"
+                    android:textColor="@color/runelight_toggle_text"
+                    android:textSize="26sp"
+                    android:textStyle="bold" />
+                <TextView style="@style/RunelightLabel"
+                    android:layout_marginTop="4dp"
+                    android:duplicateParentState="true"
+                    android:textColor="@color/runelight_toggle_secondary"
+                    android:text="@string/runelight_not_available" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
     </LinearLayout>
-
-    <ScrollView android:id="@+id/quickScroll" android:layout_width="match_parent" android:layout_height="0dp"
-        android:layout_weight="1" android:layout_marginTop="12dp" android:fillViewport="true">
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:orientation="vertical" android:paddingBottom="8dp">
-            <com.google.android.material.button.MaterialButtonToggleGroup
-                android:id="@+id/effectButtons" android:layout_width="match_parent"
-                android:layout_height="wrap_content" app:singleSelection="true" app:selectionRequired="true">
-                <com.google.android.material.button.MaterialButton android:id="@+id/effectAmbient"
-                    style="@style/RunelightEffect" android:text="@string/runelight_ambient"
-                    android:enabled="false" android:contentDescription="@string/runelight_ambient_pending" />
-                <com.google.android.material.button.MaterialButton android:id="@+id/effectSolid"
-                    style="@style/RunelightEffect" android:text="@string/runelight_solid" />
-                <com.google.android.material.button.MaterialButton android:id="@+id/effectRainbow"
-                    style="@style/RunelightEffect" android:text="@string/runelight_rainbow" />
-                <com.google.android.material.button.MaterialButton android:id="@+id/effectBreathing"
-                    style="@style/RunelightEffect" android:text="@string/runelight_breathing" />
-                <com.google.android.material.button.MaterialButton android:id="@+id/effectPulse"
-                    style="@style/RunelightEffect" android:text="@string/runelight_pulse" />
-            </com.google.android.material.button.MaterialButtonToggleGroup>
-
-            <com.google.android.material.card.MaterialCardView style="@style/RunelightCard"
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="12dp">
-                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:orientation="vertical" android:paddingStart="16dp" android:paddingEnd="16dp" android:paddingTop="12dp">
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                        android:orientation="horizontal">
-                        <TextView style="@style/RunelightLabel" android:layout_width="0dp"
-                            android:layout_weight="1" android:text="@string/runelight_brightness" android:labelFor="@id/quickBrightness" />
-                        <TextView android:id="@+id/quickBrightnessValue" style="@style/RunelightLabel" />
-                    </LinearLayout>
-                    <com.google.android.material.slider.Slider android:id="@+id/quickBrightness"
-                        android:layout_width="match_parent" android:layout_height="48dp"
-                        android:valueFrom="0" android:valueTo="100" android:stepSize="1" app:tickVisible="false"
-                        android:contentDescription="@string/runelight_brightness" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <com.google.android.material.card.MaterialCardView style="@style/RunelightCard"
-                android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp">
-                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:orientation="vertical" android:padding="16dp">
-                    <LinearLayout android:id="@+id/quickColorControls" android:layout_width="match_parent"
-                        android:layout_height="wrap_content" android:orientation="horizontal" android:baselineAligned="false">
-                        <com.google.android.material.button.MaterialButton android:id="@+id/quickLeftColor"
-                            style="@style/Widget.Material3.Button.OutlinedButton"
-                            android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1"
-                            android:layout_marginEnd="6dp" android:text="@string/runelight_left_color" android:textAllCaps="false" />
-                        <com.google.android.material.button.MaterialButton android:id="@+id/quickRightColor"
-                            style="@style/Widget.Material3.Button.OutlinedButton"
-                            android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1"
-                            android:layout_marginStart="6dp" android:text="@string/runelight_right_color" android:textAllCaps="false" />
-                    </LinearLayout>
-                    <LinearLayout android:id="@+id/quickColorEditor" android:layout_width="match_parent"
-                        android:layout_height="wrap_content" android:orientation="vertical"
-                        android:layout_marginTop="12dp" android:visibility="gone">
-                        <TextView android:id="@+id/quickColorTitle" style="@style/RunelightLabel" />
-                        <View android:id="@+id/quickColorPreview" android:layout_width="match_parent"
-                            android:layout_height="12dp" android:layout_marginTop="8dp" />
-                        <LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:gravity="center_vertical">
-                            <TextView style="@style/RunelightLabel" android:layout_width="48dp" android:text="@string/runelight_red" android:labelFor="@id/quickRed" />
-                            <com.google.android.material.slider.Slider android:id="@+id/quickRed"
-                                android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp"
-                                android:valueFrom="0" android:valueTo="255" android:stepSize="1"
-                                app:tickVisible="false" android:contentDescription="@string/runelight_red" />
-                        </LinearLayout>
-                        <LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:gravity="center_vertical">
-                            <TextView style="@style/RunelightLabel" android:layout_width="48dp" android:text="@string/runelight_green" android:labelFor="@id/quickGreen" />
-                            <com.google.android.material.slider.Slider android:id="@+id/quickGreen"
-                                android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp"
-                                android:valueFrom="0" android:valueTo="255" android:stepSize="1"
-                                app:tickVisible="false" android:contentDescription="@string/runelight_green" />
-                        </LinearLayout>
-                        <LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:gravity="center_vertical">
-                            <TextView style="@style/RunelightLabel" android:layout_width="48dp" android:text="@string/runelight_blue" android:labelFor="@id/quickBlue" />
-                            <com.google.android.material.slider.Slider android:id="@+id/quickBlue"
-                                android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp"
-                                android:valueFrom="0" android:valueTo="255" android:stepSize="1"
-                                app:tickVisible="false" android:contentDescription="@string/runelight_blue" />
-                        </LinearLayout>
-                        <LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:orientation="horizontal">
-                            <com.google.android.material.button.MaterialButton android:id="@+id/quickCancelColor"
-                                style="@style/Widget.Material3.Button.TextButton"
-                                android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1"
-                                android:text="@string/runelight_cancel_color" android:textAllCaps="false" />
-                            <com.google.android.material.button.MaterialButton android:id="@+id/quickApplyColor"
-                                android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1"
-                                android:text="@string/runelight_apply_color" android:textAllCaps="false" />
-                        </LinearLayout>
-                    </LinearLayout>
-                    <LinearLayout android:id="@+id/quickSpeedControls" android:layout_width="match_parent"
-                        android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginTop="8dp">
-                        <TextView style="@style/RunelightLabel" android:text="@string/runelight_speed" android:labelFor="@id/quickSpeed" />
-                        <com.google.android.material.slider.Slider android:id="@+id/quickSpeed"
-                            android:layout_width="match_parent" android:layout_height="48dp"
-                            android:valueFrom="0" android:valueTo="100" android:stepSize="1" app:tickVisible="false"
-                            android:contentDescription="@string/runelight_speed" />
-                    </LinearLayout>
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-            <TextView android:id="@+id/quickStatus" style="@style/RunelightLabel"
-                android:layout_marginTop="12dp" android:text="@string/runelight_ambient_pending" />
+    <com.google.android.material.button.MaterialButtonToggleGroup
+        android:id="@+id/effectButtons"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:singleSelection="true"
+        app:selectionRequired="true"
+        android:layout_marginTop="12dp">
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/effectAmbient" style="@style/RunelightEffect"
+            android:text="@string/runelight_ambient"
+            android:enabled="false"
+            android:contentDescription="@string/runelight_ambient_unavailable" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/effectSolid" style="@style/RunelightEffect"
+            android:text="@string/runelight_solid" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/effectRainbow" style="@style/RunelightEffect"
+            android:text="@string/runelight_rainbow" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/effectBreathing" style="@style/RunelightEffect"
+            android:text="@string/runelight_breathing" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/effectPulse" style="@style/RunelightEffect"
+            android:text="@string/runelight_pulse" />
+    </com.google.android.material.button.MaterialButtonToggleGroup>
+    <LinearLayout
+        android:id="@+id/quickConfiguration"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="12dp"
+        android:orientation="vertical">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:baselineAligned="false">
+            <com.moonbench.bifrost.ui.ColorLevelTile
+                android:id="@+id/quickLeftColor"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_marginEnd="6dp"
+                android:contentDescription="@string/runelight_left_level" />
+            <com.moonbench.bifrost.ui.ColorLevelTile
+                android:id="@+id/quickSpeed"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:layout_marginEnd="6dp"
+                android:contentDescription="@string/runelight_speed" />
+            <com.moonbench.bifrost.ui.ColorLevelTile
+                android:id="@+id/quickRightColor"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:contentDescription="@string/runelight_right_level" />
         </LinearLayout>
-    </ScrollView>
+        <TextView
+            android:id="@+id/quickStatus" style="@style/RunelightLabel"
+            android:layout_marginTop="8dp" android:visibility="gone" />
+    </LinearLayout>
+    <LinearLayout
+        android:id="@+id/quickColorEditor"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:layout_marginTop="12dp"
+        android:padding="12dp"
+        android:background="@drawable/runelight_toggle_surface"
+        android:visibility="gone">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="24dp" android:gravity="center_vertical">
+            <TextView style="@style/RunelightLabel"
+                android:id="@+id/quickColorTitle"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:textColor="@color/runelight_text"
+                android:textStyle="bold" />
+            <TextView style="@style/RunelightLabel" android:id="@+id/quickColorHex" />
+            <TextView style="@style/RunelightLabel"
+                android:id="@+id/quickColorLevel"
+                android:layout_marginStart="12dp" />
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+            <com.skydoves.colorpickerview.ColorPickerView
+                android:id="@+id/quickColorPicker"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:contentDescription="@string/runelight_color_wheel"
+                app:selector="@drawable/runelight_color_selector" />
+            <View
+                android:id="@+id/quickColorPreview"
+                android:layout_width="96dp"
+                android:layout_height="96dp"
+                android:layout_marginStart="12dp"
+                android:layout_marginEnd="12dp"
+                android:importantForAccessibility="no" />
+        </LinearLayout>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:orientation="horizontal">
+            <com.google.android.material.button.MaterialButton
+                style="@style/Widget.Material3.Button.TextButton"
+                android:id="@+id/quickCopyOther"
+                android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1"
+                android:text="@string/runelight_copy_right" android:textAllCaps="false" />
+            <com.google.android.material.button.MaterialButton style="@style/Widget.Material3.Button.TextButton"
+                android:id="@+id/quickCancelColor"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:text="@string/runelight_cancel_color"
+                android:textAllCaps="false" />
+            <com.google.android.material.button.MaterialButton style="@style/Widget.Material3.Button"
+                android:id="@+id/quickApplyColor"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:text="@string/runelight_apply_color"
+                android:textAllCaps="false" />
+        </LinearLayout>
+    </LinearLayout>
 </LinearLayout>

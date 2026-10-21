@@ -5,6 +5,7 @@ Selected by the owner on 2026-10-20; then refined to give Runelight its own iden
 - [Interactive standalone mockup](quick-tiles.html) — open locally in a browser.
 - [Editable source fragment](quick-tiles.fragment.html).
 - [Saved preview image](quick-tiles.png).
+- Current native [configuration](native-quick-tiles.png) and [inline picker](native-color-picker.png).
 
 ![Runelight Quick tiles proposal](quick-tiles.png)
 
@@ -16,8 +17,9 @@ A first [native UI slice](../native-ui-increment.md) now implements the Quick
 tiles direction. Its [Thor screenshot](native-quick-tiles.png) shows real native
 controls. Ambient and sound remain unavailable in that internal build.
 The native layout now supersedes the original mockup's redundant Current look
-tile: sound sits beside Lighting, followed by the effect strip and full-width
-brightness. The HTML/image above preserve the earlier proposal.
+tile: sound sits beside Lighting, followed by the effect strip and paired
+Left/Right color-level controls. The global brightness slider has been removed.
+The HTML/image above preserve the earlier proposal.
 
 ## Visual direction
 
@@ -28,6 +30,13 @@ brightness. The HTML/image above preserve the earlier proposal.
 - Flatter cards, modest corners, sentence-case labels and a unified effect strip.
   ThorTune inspired the directness and large controls; the refined styling is
   specific to Runelight. No theme packs, artwork or decorative UI animation.
+- Active Lighting and sound tiles use a full-surface violet gradient with white
+  text; inactive tiles use the normal light/dark card surface. Keep explicit
+  state text as well as color. Lighting highlights only after the running state
+  is observed; sound remains inactive while unavailable in the current build.
+  The whole sound tile is the toggle; there is no separate switch inside it.
+- The selected effect uses a strong accent fill and contrasting bold text so
+  the selection remains obvious beside the active tiles, in both appearances.
 - Plain labels throughout: Lighting and Start/Stop. No "Call Heimdall" or
   mythology-based names that require learning what a control does.
 - Edit colors inline, preserving unfinished values across recreation. Apply
@@ -41,19 +50,48 @@ brightness. The HTML/image above preserve the earlier proposal.
 | Lighting tile | Large direct Start/Stop control; reflects acknowledged engine state |
 | React to sound tile | Beside Lighting; separate on/off option; sensitivity shown only when enabled |
 | Effect strip | Ambient, Solid, Rainbow, Breathing, Pulse; changes directly |
-| Brightness card | Full width below the effect strip; numeric value and slider |
-| Context card | Relevant controls for the chosen effect |
-| Footer | Continuation/status information derived from actual runtime state |
+| Left / Right tiles | Drag each rounded color tile vertically for that side's brightness; tap to edit color where the effect supports manual colors |
+| Center Speed tile | Same vertical control between Left/Right for animated effects; omitted for Solid |
+| Center Whole screen tile (Ambient) | HomeKit-style toggle for Custom Sampling: On samples throughout both image halves; Off uses edge regions; the entire tile toggles |
+| Error feedback | Startup/hardware errors only; hidden during normal operation |
 
 The selected segment is the effect indicator; no separate Current look summary
-is needed. Lighting and sound stay accessible above the scrolling controls.
+is needed. Lighting and sound stay accessible above the fixed configuration.
 
 Effect controls:
 
-- Ambient: capture Top/Bottom, response; saturation under Settings initially.
+- Ambient: capture Top/Bottom, response, and the center **Whole screen** sampling
+  toggle; saturation under Settings initially. The toggle uses the center slot
+  occupied by Speed in animated effects, keeping independent Left/Right levels.
 - Solid: left/right colors; no animation speed control.
 - Rainbow: speed; no unused manual-color picker in the Android UI.
 - Breathing and Pulse: left/right colors and speed.
+
+All effects retain independent left/right output levels. The two levels start
+from the previous global setting when upgrading. Rainbow's tiles control levels
+while its animation owns the colors. Ambient remains unavailable pending capture
+integration; do not present the manual tile color as a measured Ambient preview.
+
+Color editing replaces the effect strip/configuration area, retaining the header
+and Lighting/sound tiles. Use the embedded native ColorPickerView wheel with a
+Runelight selector, animated preview, hex/level readout and Copy other side,
+Cancel and Apply actions. No RGB slider stack, extra dialog or scrolling.
+Copy includes both color and brightness but only changes the draft. On a running
+effect, draft colors preview on the LEDs without restarting the animation.
+Cancel/Back/closing the UI restores saved settings; Apply persists the draft.
+While stopped, color selection previews only on screen and never starts lighting.
+
+Animated effects use three equal columns: **Left / Speed / Right**. Solid uses
+two wider color/level tiles. The separate horizontal speed row is removed. Keep
+normal status silent; display actual startup/hardware errors in context. The
+temporary “Ambient capture is being rebuilt” footer has been removed.
+
+Ambient's Whole screen option carries forward the intent of Bifrost's Custom
+Sampling. Define Edges versus Whole screen explicitly; do not inherit the old
+two-pixel default as a purported edge algorithm. Both modes use an aspect-correct
+grid, preserve left/right mapping and true black, and update sampling within the
+existing session without new capture consent. This control is planned for the
+Ambient implementation; Ambient remains unavailable in the current native build.
 
 The prototype still uses a shared generic color/speed context for Rainbow. Correct
 that conditional visibility during Android implementation; the table above is
@@ -62,7 +100,7 @@ the intended behavior. Users never need to name/save a preset to change a settin
 ## Sound is an overlay
 
 The selected look remains the source of color and animation. The sound envelope
-modulates its intensity; global brightness remains the overall ceiling. Black
+modulates its intensity; each side's brightness remains its output ceiling. Black
 Ambient content stays at zero, with sound either on or off. A sound toggle must
 not replace the effect or reset its colors/source.
 
@@ -75,7 +113,9 @@ sound is enabled; never switch to a physical microphone as a fallback.
 Design for the Thor lower display first. Measure its actual density, insets and
 available dp rather than converting the mockup's CSS pixels directly to Android
 dimensions. Use at least 48dp effective touch targets, readable text, labeled
-controls and room for system bars. Reflow/scroll at larger font sizes as needed.
+controls and room for system bars. The current configuration fits without
+scrolling at the owner's default font size; larger-font adaptations still need
+verification and must preserve core actions rather than silently clipping them.
 Keep Start/Stop accessible while settings are open.
 The saved mockup's settings overlay currently requires closing it to reach the
 main power tile; the Android implementation should retain a Stop action there.

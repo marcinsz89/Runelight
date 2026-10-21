@@ -23,6 +23,25 @@ SHA-256/package/version/signing type, firmware, serial alias, source/UI display 
 capture backend, sound state, whitelist/battery restrictions, Pathfinder state,
 steps, expected/actual result, duration and redacted evidence paths.
 
+The later [Ambient capability probe](ambient-probe-2026-10-20.md) records isolated
+capture results and a framework watchdog incident. It emits no LED output, so
+its source/color/Stop passes do not satisfy the full end-to-end scenarios below.
+Controlled playback signal, bottom screenshots + audio, sound-off continuity,
+probe Home/ADB display movement and consent denial/recovery now have scoped
+passes. Actual LED Ambient/audio, Pathfinder's shortcut and long-run performance
+remain unproven; the broader table still requires end-to-end implementation.
+
+The [ownership/handoff increment](service-ownership-2026-10-21.md) adds scoped
+passes for closed-driver fencing, Solid timer idle, rapid Stop/Start, UI task
+removal and plain-effect handoff. Lower-screen Home/sleep/wake unexpectedly
+restores the previous app in matched Runelight, Bifrost debug and Settings tests;
+this remains open and is not a passed wake scenario.
+
+The [service-state increment](service-state-2026-10-21.md) adds awake Thor passes
+for wanted-intent/explicit Stop, ignored legacy commands, destruction/recreation
+without automatic resume and observed output acceptance. These scoped results do
+not turn the historical baseline table below into a full product acceptance pass.
+
 Use `PASS`, `FAIL`, `BLOCKED` or `NOT RUN`. Keep raw logs and identifying device
 data under ignored `local-test-results/`; commit only deliberately redacted notes.
 Keep the exact release mapping with the tested APK. Stop other LED controllers.

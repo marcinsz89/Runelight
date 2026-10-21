@@ -18,41 +18,72 @@ class StaticAnimation(
     private val handler = Handler(Looper.getMainLooper())
     private var running = false
 
-    private var targetColor: Int = initialColor
-    private var currentColor: Int = initialColor
+    private var targetColor: Int = initialColor or Color.BLACK
+    private var currentColor: Int = targetColor
 
-    private var targetRightColor: Int = initialRightColor
-    private var currentRightColor: Int = initialRightColor
+    private var targetRightColor: Int = initialRightColor or Color.BLACK
+    private var currentRightColor: Int = targetRightColor
 
     private var targetBrightness: Int = 255
     private var currentBrightness: Int = 255
 
     private var lerpStrength: Float = 0.5f
 
+    /** Main-looper observation used by the idle-work regression. */
+    internal val hasPendingFrame: Boolean get() = handler.hasCallbacks(runnable)
+
+    private fun scheduleFrame() {
+        if (running && !handler.hasCallbacks(runnable)) handler.post(runnable)
+    }
+
     override fun setTargetColor(color: Int) {
-        targetColor = color
+        val opaque = color or Color.BLACK
+        if (targetColor == opaque) return
+        targetColor = opaque
+        scheduleFrame()
     }
 
     override fun setTargetRightColor(color: Int) {
-        targetRightColor = color
+        val opaque = color or Color.BLACK
+        if (targetRightColor == opaque) return
+        targetRightColor = opaque
+        scheduleFrame()
     }
 
     override fun setTargetBrightness(brightness: Int) {
-        targetBrightness = brightness.coerceIn(0, 255)
+        val bounded = brightness.coerceIn(0, 255)
+        if (targetBrightness == bounded) return
+        targetBrightness = bounded
+        scheduleFrame()
     }
 
     override fun setLerpStrength(strength: Float) {
         lerpStrength = strength.coerceIn(0f, 1f)
     }
 
+    // Integer rounding must not leave a channel permanently one or two steps
+    // short of the target, including when fading to genuine black.
+    private fun step(from: Int, to: Int, factor: Float): Int {
+        val next = lerpInt(from, to, factor)
+        return if (next == from && from != to) from + (if (to > from) 1 else -1) else next
+    }
+
+    private fun stepColor(from: Int, to: Int, factor: Float) = Color.rgb(
+        step(Color.red(from), Color.red(to), factor),
+        step(Color.green(from), Color.green(to), factor),
+        step(Color.blue(from), Color.blue(to), factor)
+    )
+
     private val runnable = object : Runnable {
         override fun run() {
             if (!running) return
 
             val factor = 0.15f + 0.7f * lerpStrength
-            currentColor = lerpColor(currentColor, targetColor, factor)
-            currentRightColor = lerpColor(currentRightColor, targetRightColor, factor)
-            currentBrightness = lerpBrightnessInt(currentBrightness, targetBrightness, factor)
+            currentColor = stepColor(currentColor, targetColor, factor)
+            currentRightColor = stepColor(currentRightColor, targetRightColor, factor)
+            val nextBrightness = lerpBrightnessInt(currentBrightness, targetBrightness, factor)
+            currentBrightness = if (nextBrightness == currentBrightness && currentBrightness != targetBrightness)
+                step(currentBrightness, targetBrightness, factor) else nextBrightness
 
             val scale = currentBrightness / 255f
 
@@ -64,14 +95,11 @@ class StaticAnimation(
             val rg = (Color.green(currentRightColor) * scale).roundToInt().coerceIn(0, 255)
             val rb = (Color.blue(currentRightColor) * scale).roundToInt().coerceIn(0, 255)
 
-            ledController.setLedColor(lr, lg, lb,
-                leftTop = true, leftBottom = true,
-                rightTop = false, rightBottom = false)
-            ledController.setLedColor(rr, rg, rb,
-                leftTop = false, leftBottom = false,
-                rightTop = true, rightBottom = true)
+            ledController.setLedColorDual(lr, lg, lb, rr, rg, rb)
 
-            handler.postDelayed(this, adjustedAnimationDelay(30L, targetBrightness))
+            if (currentColor != targetColor || currentRightColor != targetRightColor || currentBrightness != targetBrightness) {
+                handler.postDelayed(this, adjustedAnimationDelay(30L, targetBrightness))
+            }
         }
     }
 
@@ -81,9 +109,14 @@ class StaticAnimation(
         handler.post(runnable)
     }
 
-    override fun stop() {
+    override fun stop() = stop(clearOutput = true)
+
+    override fun stopForHandoff() = stop(clearOutput = false)
+
+    private fun stop(clearOutput: Boolean) {
         running = false
         handler.removeCallbacksAndMessages(null)
+        if (!clearOutput) return
         ledController.setLedColor(
             0,
             0,
