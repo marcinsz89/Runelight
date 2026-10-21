@@ -28,8 +28,9 @@
   Do not expose inherited names such as "Call Heimdall" or "Ragnarok" in the POC.
 - The native entry point is `RunelightActivity`; application ID is
   `io.github.marcinsz89.runelight` (debug suffix `.debug`). The code namespace
-  remains `com.moonbench.bifrost`. The inherited MainActivity is internal legacy
-  code, not the new launcher. Do not route new controls back through it.
+  remains `com.moonbench.bifrost`. The inherited MainActivity and its feature
+  graph have been removed.
+  Do not restore legacy control routes.
 - Keep schedules, plugins/external API, app profiles, wallpapers, artwork,
   preset libraries/import-export, boot start and battery/temperature modes out of
   the POC. Retire their dependencies and manifest entries deliberately.
@@ -60,9 +61,9 @@
   `unit` runs all JVM tests; `build` produces debug; `lint` runs full debug lint;
   `check` combines those; `release` verifies R8/resource shrinking and vital lint.
 - See [BUILDING.md](BUILDING.md) for setup, APK identities, reports and ADB steps.
-- The inherited baseline has 60 passing JVM tests and known full-lint errors.
-  Record those failures; do not add a broad lint baseline or disable lint to hide
-  them. A passing release/vital-lint task is not a full-lint pass.
+- Historical baseline failures are recorded in `docs/baseline.md`; current
+  cleanup results are in `docs/cleanup-1.0-2026-10-21.md`. Do not add a broad lint
+  baseline or disable lint to hide failures. Release/vital lint is not full lint.
 - Run narrow meaningful tests first. Add behavior regressions for fixes; avoid
   tests that merely assert source strings. Use pure JVM tests for math/state,
   Android lifecycle tests for Activity/service behavior and a real Thor for LEDs,
@@ -97,8 +98,10 @@
 - Keep the latest sampled target and let smoothing converge even if new input
   frames are identical. True black stays zero through brightness/audio processing.
 - Sound modulates Ambient, Solid and Rainbow intensity; it is not a separate
-  effect family. Breathing/Pulse pause audio and dim/disable the sound tile while
-  retaining its saved On preference. Returning to a supported mode reuses valid
+  effect family. Its tile cycles Off/Flow/Beat; Flow retains the original On
+  response (stored as LEVEL). Update Flow/Beat in place without replacing a valid recorder/capture session.
+  Breathing/Pulse pause audio and dim/disable the sound tile while
+  retaining its saved mode. Returning to a supported effect reuses valid
   service-owned capture consent. Request playback permissions only when needed. Failed reads must end
   cleanly; release/unblock before joining; no urgent-priority retry spin.
 - Capture backend/source selection is independent of the UI's display. Use a

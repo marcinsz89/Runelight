@@ -100,9 +100,6 @@ class LedController internal constructor(
         lock.withLock { if (!closed) frame.blackBaseline() }
     }
 
-    // Legacy API, retaining its existing black-RGB / wire-field behavior.
-    fun setBrightness(brightness: Int) = setLedColor(0, 0, 0, brightness)
-
     /** Caller holds the lock across raw state, scaling and latest-frame replacement. */
     private fun emitFrame() {
         val listener = onOutputResult

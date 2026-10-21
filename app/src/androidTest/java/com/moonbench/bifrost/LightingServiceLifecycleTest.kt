@@ -1,6 +1,7 @@
 package com.moonbench.bifrost
 
 import android.app.ActivityOptions
+import android.app.NotificationManager
 import android.content.Intent
 import android.hardware.display.DisplayManager
 import android.os.SystemClock
@@ -12,6 +13,9 @@ import com.moonbench.bifrost.animations.LedAnimationType
 import com.moonbench.bifrost.services.LEDService
 import com.moonbench.bifrost.services.LightingIntentStore
 import com.moonbench.bifrost.services.LightingPhase
+import com.moonbench.bifrost.services.LightingNotice
+import com.moonbench.bifrost.services.LightingNotifications
+import com.moonbench.bifrost.audio.SoundState
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -65,9 +69,32 @@ class LightingServiceLifecycleTest {
                 assertFalse(LEDService.isRunning)
                 assertEquals(com.moonbench.bifrost.services.LightingFailure.CAPTURE_LOST, LEDService.state.value?.failure)
                 assertFalse(LightingIntentStore(context).wantedRunning)
+                assertFalse("Obsolete consent must not notify after explicit Stop",
+                    context.getSystemService(NotificationManager::class.java).activeNotifications
+                        .any { it.id == LEDService.FAILURE_NOTIFICATION_ID })
                 context.startService(start(LedAnimationType.AMBIENT).setAction(LEDService.ACTION_UPDATE_PARAMS))
                 Thread.sleep(150)
                 assertFalse(LEDService.isRunning)
+            } finally { stop(); awaitMode(null) }
+        }
+    }
+
+    @Test fun notificationStopClearsWantedIntentAndCancelsPendingConsent() {
+        launch().use {
+            try {
+                context.startForegroundService(start(LedAnimationType.STATIC))
+                awaitMode(LedAnimationType.STATIC)
+                var ticket = -1L
+                instrumentation.runOnMainSync { ticket = LEDService.projectionRequests.begin() }
+                val notice = LightingNotice.from(LEDService.state.value!!, SoundState())!!
+                LightingNotifications.build(context, notice).actions.single().actionIntent.send()
+                awaitMode(null)
+                assertFalse(LightingIntentStore(context).wantedRunning)
+                assertFalse(LEDService.projectionRequests.isPending(ticket))
+                Thread.sleep(250)
+                assertEquals(LightingPhase.STOPPED, LEDService.state.value?.phase)
+                assertFalse(context.getSystemService(NotificationManager::class.java).activeNotifications
+                    .any { it.id == LEDService.NOTIFICATION_ID || it.id == LEDService.FAILURE_NOTIFICATION_ID })
             } finally { stop(); awaitMode(null) }
         }
     }
@@ -138,14 +165,14 @@ class LightingServiceLifecycleTest {
             try {
                 prefs.edit().putBoolean("auto_switch_enabled", true).commit()
                 context.startForegroundService(start(LedAnimationType.STATIC)
-                    .putExtra(LEDService.EXTRA_BATTERY_OVERRIDE_WHEN_PLUGGED, true)
-                    .putExtra(LEDService.EXTRA_LOW_BATTERY_ALERT_ENABLED, true)
-                    .putExtra(LEDService.EXTRA_LOW_BATTERY_ALERT_THRESHOLD, 100)
-                    .putExtra(LEDService.EXTRA_ADAPTIVE_BRIGHTNESS, true))
+                    .putExtra("batteryOverrideWhenPlugged", true)
+                    .putExtra("lowBatteryAlertEnabled", true)
+                    .putExtra("lowBatteryAlertThreshold", 100)
+                    .putExtra("adaptiveBrightness", true))
                 awaitMode(LedAnimationType.STATIC)
                 assertTrue(LightingIntentStore(context).wantedRunning)
-                for (action in listOf(LEDService.ACTION_FORCE_APP_PROFILE_RESOLUTION,
-                    LEDService.ACTION_EXTERNAL_DISPLAY, LEDService.ACTION_SUPPLY_PROJECTION)) {
+                for (action in listOf("com.moonbench.bifrost.FORCE_APP_PROFILE_RESOLUTION",
+                    "com.moonbench.bifrost.EXTERNAL_DISPLAY", "com.moonbench.bifrost.SUPPLY_PROJECTION")) {
                     context.startService(Intent(context, LEDService::class.java).setAction(action)
                         .putExtra("animationType", LedAnimationType.PULSE.name))
                 }

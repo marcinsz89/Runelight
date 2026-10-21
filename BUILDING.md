@@ -46,7 +46,7 @@ Run from this checkout:
 
 ```sh
 ./scripts/dev.sh doctor
-./scripts/dev.sh unit --tests 'com.moonbench.bifrost.tools.CrossfadeTest'
+./scripts/dev.sh unit --tests 'com.moonbench.bifrost.tools.LedFrameStateTest'
 ./scripts/dev.sh unit
 ./scripts/dev.sh build
 ./scripts/dev.sh lint
@@ -54,8 +54,7 @@ Run from this checkout:
 ```
 
 `./scripts/dev.sh check` combines JVM tests, debug assembly and full debug lint.
-It currently returns a failure because inherited lint errors are real baseline
-findings. Run tasks separately when an exact task result is needed. Additional
+The 1.0 cleanup passes this check without lint suppression. Additional
 Gradle arguments, such as `--offline`, `--rerun-tasks` or `--stacktrace`, pass
 through the helper. Offline mode requires previously cached dependencies.
 
@@ -77,16 +76,26 @@ Release uses R8 and resource shrinking. `assembleRelease` also runs vital lint,
 which covers a different subset from full debug lint. Keep the exact APK and its
 mapping together in local evidence when diagnosing release traces.
 
-## Existing tests and current failures
+Runelight starts its own display version at **1.0.0** (`1.0.0-debug` for debug).
+Android `versionCode` is **17**, continuing above the inherited value 16 so this
+build can update the existing Runelight installation. Keep future version codes
+increasing independently of the public version name. The app IDs and signing
+configuration are unchanged.
 
-The inherited baseline has 12 JVM test files (60 tests), covering manifests,
-migration, plugins, external contracts, schedules and crossfade math.
+## Retained tests
+
+The 1.0 cleanup has 62 JVM tests for sampling/color, audio envelopes, consent,
+output frames/backpressure, runtime state, notifications and saved effect names.
+Manifest contracts parse Gradle's merged debug/release manifest instead of source
+strings; the test task tracks that XML as an input. Tests for retired features
+were removed intentionally alongside their production code.
+
 `app/src/androidTest/.../RunelightActivityTest.kt` covers effect/draft restoration,
 independent levels, the mode-specific Speed tile, copy/Cancel/Apply, gestures and
 real running-mode acknowledgement on the Thor. `AnimationOutputTest` runs the
 real animation timers and driver against an in-memory Binder: it checks temporal
 frames, side scaling, settled output and Stop without writing physical LEDs.
-Source-string manifest checks do not verify Android lifecycle behavior.
+Merged-manifest checks verify packaging, not Android lifecycle behavior.
 
 `LightingServiceLifecycleTest` exercises explicit Start/Stop, task removal,
 durable intent, ignored legacy commands and destruction/recreation without
@@ -135,17 +144,19 @@ marker paths in `files/vendor-output-timing.json`; collect those timestamps and
 remove only the listed markers after completion. Keep all collected evidence,
 APK copies and vendor binaries under ignored `local-test-results/`.
 
-## Known full-lint errors
+## Current validation and warnings
 
-- `MissingPermission` at the inherited `tools/AudioAnalyzer.kt:55`: missing
-  runtime permission handling (review R6). The native playback path checks and
-  handles permission loss separately; `RECORD_AUDIO` is now declared.
-- `StartActivityAndCollapseDeprecated` at `services/BifrostTileService.kt:52`.
-  The old overload is guarded below API 34. Evaluate this specific compatibility
-  diagnostic or retire the tile with its subsystem; do not assume a Thor crash.
+The 1.0 cleanup passes all 62 JVM tests, debug/release assembly, release R8/resource
+shrinking, vital lint and full debug lint. The old analyzer's `MissingPermission`
+error is removed with that component; no lint baseline or suppression was added.
+The Android-test APK compiles, including a new idempotent old-alarm-token
+retirement check. It has not been run on the Thor after this cleanup.
 
-Do not generate a broad lint baseline to make the initial check green.
-See [the baseline record](docs/baseline.md) for commands actually run in this clone.
+See [the cleanup report](docs/cleanup-1.0-2026-10-21.md) for exact commands,
+APK inspection and remaining warnings. Earlier notification/menu and sound
+checks are in the [shortcut](docs/shortcuts-background-2026-10-21.md) and
+[Beat](docs/beat-mode-2026-10-21.md) reports. Historical baseline failures remain
+recorded in [the baseline record](docs/baseline.md).
 
 ## Test layers during development
 

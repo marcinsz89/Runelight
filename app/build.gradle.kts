@@ -15,8 +15,8 @@ android {
         applicationId = "io.github.marcinsz89.runelight"
         minSdk = 33
         targetSdk = 36
-        versionCode = 16
-        versionName = "1.3.1"
+        versionCode = 17
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -72,13 +72,33 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.activity)
-    implementation(libs.androidx.constraintlayout)
-    implementation(libs.androidx.material3)
+    implementation(libs.androidx.lifecycle.livedata.core)
     implementation(libs.colorpicker)
+    // Removing Compose must not downgrade shared libraries already used by this build.
+    constraints {
+        implementation(libs.androidx.collection)
+        implementation(libs.androidx.emoji2)
+        implementation(libs.androidx.emoji2.views.helper)
+        implementation(libs.androidx.constraintlayout)
+        implementation(libs.androidx.annotation.experimental)
+        implementation(libs.kotlinx.coroutines.android)
+        implementation(libs.kotlinx.coroutines.core)
+    }
     testImplementation(libs.junit)
-    // Real org.json on the JVM test classpath (Android's is a throwing stub),
-    // so plugin-catalogue parsing can be unit-tested.
-    testImplementation("org.json:json:20240303")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+}
+
+// Contract tests read the actual manifest after Android/library merging.
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    if (name in setOf("testDebugUnitTest", "testReleaseUnitTest")) {
+        val variant = if (name == "testDebugUnitTest") "debug" else "release"
+        val taskVariant = variant.replaceFirstChar { it.uppercase() }
+        dependsOn("process${taskVariant}Manifest")
+        val mergedManifest = layout.buildDirectory.file(
+            "intermediates/merged_manifests/$variant/process${taskVariant}Manifest/AndroidManifest.xml")
+        inputs.file(mergedManifest).withPropertyName("mergedManifest")
+        systemProperty("runelight.mergedManifest", mergedManifest.get().asFile.absolutePath)
+        systemProperty("runelight.debugProbes", variant == "debug")
+    }
 }

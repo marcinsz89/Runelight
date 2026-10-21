@@ -1,16 +1,20 @@
 [versions]
 agp = "8.13.2"
 kotlin = "2.0.21"
-coreKtx = "1.10.1"
+coreKtx = "1.13.1"
 junit = "4.13.2"
 junitVersion = "1.1.5"
 espressoCore = "3.5.1"
 appcompat = "1.6.1"
 material = "1.10.0"
-activity = "1.8.0"
-constraintlayout = "2.1.4"
-material3 = "1.4.0"
+activity = "1.8.2"
 colorpicker = "2.3.0"
+lifecycle = "2.9.0"
+collection = "1.5.0"
+emoji2 = "1.4.0"
+constraintlayout = "2.1.4"
+annotationExperimental = "1.4.1"
+coroutines = "1.8.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -20,9 +24,18 @@ androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-co
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 androidx-activity = { group = "androidx.activity", name = "activity", version.ref = "activity" }
-androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
-androidx-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
 colorpicker = { group = "com.github.skydoves", name = "colorpickerview", version.ref = "colorpicker" }
+
+androidx-lifecycle-livedata-core = { group = "androidx.lifecycle", name = "lifecycle-livedata-core", version.ref = "lifecycle" }
+
+# Constraints preserve the pre-cleanup resolved versions without introducing new libraries.
+androidx-collection = { group = "androidx.collection", name = "collection", version.ref = "collection" }
+androidx-emoji2 = { group = "androidx.emoji2", name = "emoji2", version.ref = "emoji2" }
+androidx-emoji2-views-helper = { group = "androidx.emoji2", name = "emoji2-views-helper", version.ref = "emoji2" }
+androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
+androidx-annotation-experimental = { group = "androidx.annotation", name = "annotation-experimental", version.ref = "annotationExperimental" }
+kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

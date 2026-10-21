@@ -1,5 +1,12 @@
 # Thor POC test matrix
 
+Follow-up: the [shortcut/background](shortcuts-background-2026-10-21.md) and
+[Beat](beat-mode-2026-10-21.md) increments add scoped passes for notification
+construction/Stop, stopped shortcut entry, saved sound modes, in-place recorder
+updates and real Quick Settings launch back to lower controls. The existing tile
+was already added; first-add/cancel, secure lock and wake acceptance remain open.
+The historical baseline table below is not a claim that every row was rerun.
+
 Initial status: **NOT RUN**. No Thor was connected during setup on 2026-10-20.
 A subsequent read-only ADB check confirmed Android 13 / API 33, firmware
 `Thor_V1.0.0.377_20260206_165408_user`, displays 0 and 4, and density 369 dpi.

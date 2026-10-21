@@ -88,6 +88,9 @@ internal class PlaybackAudioCapture(
         } catch (_: RuntimeException) { fail() }
     }
 
+    /** Main-looper parameter update: no recorder/projection replacement or extra buffering. */
+    fun setMode(mode: SoundMode) { envelope.setMode(mode) }
+
     private fun fail() {
         if (!active) return
         close()

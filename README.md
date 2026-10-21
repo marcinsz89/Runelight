@@ -4,9 +4,10 @@ A personal LED utility for the **AYN Thor Max**, built around reliable lighting
 and simple controls that fit the lower screen. Runelight is a fork of
 [Bifrost](https://github.com/Pollux-MoonBench/Bifrost).
 
-**Work in progress:** the current internal build supports top-screen Ambient,
+**Version 1.0.0** supports top-screen Ambient,
 Solid, Rainbow, Breathing and Pulse, with playback sound reaction on Ambient,
 Solid and Rainbow. Bottom-source Ambient remains in development.
+See the [changelog](CHANGELOG.md) for this first Runelight version.
 
 ![Runelight Ambient controls on the Thor lower screen](docs/design/native-ambient.png)
 
@@ -14,14 +15,15 @@ Solid and Rainbow. Bottom-source Ambient remains in development.
 
 - A full-tile Lighting button with explicit Start/Stop and observed service state.
 - Direct effect selection with no forced off/on pause between the four working effects.
-- A separate React to sound tile; Breathing/Pulse pause it while retaining saved On.
+- A separate React to sound tile cycling Off / Flow / Beat; Breathing/Pulse pause it while retaining your choice.
 - Independent left/right brightness: drag either color tile vertically.
 - Inline color wheel with live LED preview while lighting is running. Apply saves;
   Cancel, Back or leaving the UI restores the saved values.
 - Copy the other side’s color and brightness into the editor before applying.
 - A center Speed tile for animated effects; Ambient has Edges / Screen halves / Full screen sampling.
 - Dark/light appearance and saved settings.
-- A foreground notification with Stop, plus a Quick Settings shortcut to the controls.
+- An effect/sound notification with Stop, plus a Quick Settings shortcut to the controls.
+  The header menu offers shortcut placement and notification settings.
 
 The configuration fits the Thor’s lower screen without scrolling at the tested
 font size. The UI also supports the top screen and Android display movement;
@@ -51,16 +53,20 @@ converges on held content and preserves black. Start asks for Android screen-cap
 consent. Samples stay in memory; no recording is saved. After capture stops,
 Start requests fresh consent. See the [implementation and tested limits](docs/ambient-implementation-2026-10-21.md).
 
-**React to sound** layers playback intensity over Ambient, Solid or Rainbow.
+**React to sound** cycles **Off → Flow → Beat** and layers playback intensity over Ambient, Solid or Rainbow.
 Each side's brightness is its maximum; quiet playback dims it and silence fades
-it to zero. Breathing/Pulse dim and disable the sound tile while keeping its
-saved On preference. Returning to a supported effect resumes sound with valid
+it to zero in Flow. Beat emphasizes bass/transient energy above an adaptive
+background threshold, with a faster fade for darker gaps between hits. It is an
+energy response, not perfect drum isolation or tempo tracking.
+Breathing/Pulse dim and disable the sound tile while keeping its
+saved mode. Returning to a supported effect resumes sound with valid
 consent. Ambient and sound share one capture session. During the pause, Android
 may still show the retained capture authorization; Stop releases it.
 
 Sound requests audio permission and Android capture consent when needed. It uses
 playback capture, with no microphone fallback or saved recording. Source apps can
 prohibit playback capture. See the [sound implementation and tested limits](docs/sound-implementation-2026-10-21.md).
+The [Beat increment](docs/beat-mode-2026-10-21.md) describes the new response and migration.
 
 Debug-only probes have demonstrated top-screen MediaProjection, explicit
 Accessibility sampling of both displays, and playback-capture combinations on
@@ -69,9 +75,9 @@ Bottom-source support will expose its actual permission/backend requirements.
 See the [POC plan](docs/poc-plan.md) and [capture findings](docs/ambient-probe-2026-10-20.md).
 
 Presets, app profiles, schedules, boot start, plugins/external APIs, wallpapers
-and battery/temperature effects are outside the POC. Active legacy service policies
-and startup/API receiver registrations have been removed; the remaining inherited
-source and resources still need the [planned cleanup](docs/cleanup-inventory.md).
+and battery/temperature effects are outside 1.0. Their inherited code, resources,
+entry points and permissions have been removed; see the [cleanup inventory](docs/cleanup-inventory.md).
+Stereo sound reaction is deferred to the next version.
 
 ## Build and test
 
@@ -90,19 +96,21 @@ The debug APK is generated at `app/build/outputs/apk/debug/app-debug.apk`.
 Runelight uses application ID `io.github.marcinsz89.runelight`; debug builds add
 `.debug`. Bifrost releases and its Obtainium source install the upstream app.
 
-Latest recorded validation on the owner’s **Thor Max / Android 13**:
+Latest validation (2026-10-21); device checks use the owner’s **Thor Max / Android 13**:
 
-- The current increment passes 99 JVM regressions and focused Thor tests.
+- The cleanup passes 62 retained JVM regressions. Earlier focused Thor tests
+  cover the retained engine; the cleanup APK was installed on the Thor and
+  the owner approved folding the changes into 1.0 after testing.
   Controlled playback drives physical Ambient intensity; unsupported-mode pause,
   automatic resume and retained video capture were checked on the Thor. See the
   [sound report](docs/sound-implementation-2026-10-21.md) and earlier [Ambient report](docs/ambient-implementation-2026-10-21.md).
 - Debug and release assembly, including release shrinking and vital lint, completed.
-- Full debug lint still fails on two inherited errors in the old audio analyzer
-  and the Android 13 Quick Settings collapse call.
+- Full debug lint passes after removal of the obsolete audio analyzer, without
+  suppression. See the [cleanup results](docs/cleanup-1.0-2026-10-21.md) for scope and remaining warnings.
 
 This is a development build. The lower-screen Home/lock/unlock restoration issue
 remains open; it also reproduced with Settings and the installed Bifrost debug
-baseline. Quick Settings panel interaction, capture revocation/game acceptance,
+baseline. Broader Quick Settings/lock-screen acceptance, capture revocation/game acceptance,
 representative game audio, long gameplay sessions and Android 14+ acceptance remain unverified.
 An owner-reported intermittent white Ambient output after idle OLED cleanup
 remains unresolved; a subsequent cleanup recovered correctly. Audio/LED lag with

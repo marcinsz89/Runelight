@@ -1,27 +1,14 @@
 package com.moonbench.bifrost.animations
 
 enum class LedAnimationType(
-    val needsMediaProjection: Boolean,
     val needsColorSelection: Boolean,
-    val supportsSpeed: Boolean,
-    val supportsSmoothness: Boolean,
-    val supportsAudioSensitivity: Boolean = false
+    val supportsSpeed: Boolean
 ) {
-    AMBIENT(false, false, true, true, false),
-    AUDIO_REACTIVE(true, true, true, true, true),
-    AMBIAURORA(true, false, true, true, true),
-    BATTERY_INDICATOR(false, false, false, false, false),
-    CPU_TEMPERATURE(false, false, false, false, false),
-    STATIC(false, true, false, false, false),
-    BREATH(false, true, true, false, false),
-    RAINBOW(false, false, true, false, false),
-    PULSE(false, true, true, false, false),
-    STROBE(false, true, true, false, false),
-    SPARKLE(false, true, true, false, false),
-    FADE_TRANSITION(false, true, true, false, false),
-    RAVE(false, false, true, false, false),
-    CHASE(false, true, true, false, false),
-    PIPBOY(false, true, false, false, false);
+    AMBIENT(false, true),
+    STATIC(true, false),
+    BREATH(true, true),
+    RAINBOW(false, true),
+    PULSE(true, true);
 
     companion object {
         private val LEGACY_NAMES = mapOf("AMBILIGHT" to AMBIENT)

@@ -71,7 +71,7 @@ The HTML/image above preserve the earlier proposal.
 |---|---|
 | Header | Rune/name and light/dark appearance action |
 | Lighting tile | Large direct Start/Stop control; reflects acknowledged engine state |
-| React to sound tile | Beside Lighting; separate on/off option; sensitivity shown only when enabled |
+| React to sound tile | Beside Lighting; cycles Off / Flow / Beat; no nested control |
 | Effect strip | Ambient, Solid, Rainbow, Breathing, Pulse; changes directly |
 | Left / Right tiles | Drag each rounded color tile vertically for that side's brightness; tap to edit color where the effect supports manual colors |
 | Center Speed tile | Same vertical control between Left/Right for animated effects; omitted for Solid |
@@ -127,8 +127,15 @@ the intended behavior. Users never need to name/save a preset to change a settin
 
 ## Sound is an overlay
 
-Sound is supported on Ambient, Solid and Rainbow. Breathing/Pulse dim and disable
-its tile, preserving the saved On/Off preference; returning restores it when the
+Sound cycles **Off / Flow / Beat** on Ambient, Solid and Rainbow. The entire tile
+advances the choice; there is no nested switch or sensitivity slider. Three
+small position dots at the top right indicate Off / Flow / Beat, matching
+the Sampling tile's selected-dot treatment. They preserve the main tile height
+and stay on the saved mode while sound is paused. Flow retains
+the original level response. Beat suppresses steady/quieter sound and emphasizes
+stronger, bass-weighted transients, with a quicker fade between hits.
+Breathing/Pulse dim and disable
+the tile, preserving the saved mode (including the Beat label); returning restores it when the
 service's capture session is still valid. No extra switch is nested inside the tile.
 
 The selected look remains the source of color and animation. The sound envelope
@@ -136,9 +143,13 @@ modulates its intensity; each side's brightness remains its output ceiling. Blac
 Ambient content stays at zero, with sound either on or off. A sound toggle must
 not replace the effect or reset its colors/source.
 
-One sensitivity slider is enough for the POC. Silence floor and response defaults
-remain tuning decisions in the plan. Request playback capture permissions when
+The owner chose a response mode instead of an initial sensitivity slider.
+Threshold/response defaults remain subject to music testing. Request playback capture permissions when
 sound is enabled; never switch to a physical microphone as a fallback.
+
+The header also has a More options button beside appearance: Add Quick Settings
+shortcut and Notification settings. The popup closes with its Activity; these
+actions never start lighting. The main effect/editor/brightness layout is retained.
 
 ## Lower-screen and lifecycle behavior
 

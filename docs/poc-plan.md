@@ -1,5 +1,12 @@
 # Runelight POC — implementation plan draft
 
+Current 1.0 update (2026-10-21): native controls, five effects, independent
+Off / Flow / Beat sound, notifications and Quick Settings are implemented.
+The [legacy cleanup](cleanup-1.0-2026-10-21.md) removes the retired graph;
+[the inventory](cleanup-inventory.md) records what remains. Stereo is deferred
+to the next version. The staged investigation below is historical planning;
+the device matrix and linked increment reports define actual acceptance.
+
 Saved 2026-10-20. The first native UI slice is now implemented. This is the working
 plan for the discussed POC; open choices below remain proposals. The source
 baseline is Bifrost 1.3.1, `1baddf1644ff0d7edd1bd0f4ba02f7eb6c8e3cfa`.
@@ -26,22 +33,26 @@ POC scope discussed:
   whole-picture color. Favor colorful pixels and lift brightness/saturation while
   preserving true black. Preserve independent Left/Right levels without restarting capture.
 - Independent **React to sound** on Ambient, Solid and Rainbow. Breathing/Pulse
-  pause it and dim the tile while retaining the saved On preference. Returning to
-  supported modes restores reaction with valid consent. The effect supplies
-  color/animation; sound modulates intensity. A sensitivity control remains planned.
+  pause it and dim the tile while retaining the saved mode. Returning to
+  supported modes restores reaction with valid consent. The tile now cycles Off /
+  Flow / Beat; Beat emphasizes stronger bass/transient energy and suppresses the
+  background. This replaces the initially proposed sensitivity slider. The effect
+  supplies color/animation; sound modulates intensity.
 - Direct effect/brightness controls, relevant per-effect controls, explicit
   capture source, dark/light appearance, last-used settings and Start/Stop.
 - Service continuation after normal UI dismissal, honest capture/audio/hardware
   status and a foreground notification with Stop.
-- A Notification Center button shortcut for quick access to Runelight.
+- A Quick Settings shortcut for quick access to Runelight; the header menu now
+  offers system placement and notification settings. Active notifications report
+  effect/sound state and Stop; handled engine failure offers manual recovery.
 - Top and bottom capture only through a backend that demonstrably supports the
   selected source; a clear unavailable state instead of pretending it works.
 
 Deferred from the POC: preset libraries, app profiles, schedules, plugins,
 external API, wallpapers, artwork, import/export workflows, boot auto-start,
-battery/temperature effects and unsafe performance profiles. Add the Notification
-Center shortcut after core controls stabilize; resolve the existing Quick Settings
-lint issue if that component is reused.
+battery/temperature effects and unsafe performance profiles. The shortcut
+[increment](shortcuts-background-2026-10-21.md) resolves the existing Quick Settings
+lint issue. Complete panel/secure-lock and wake acceptance on the Thor.
 
 Optional later convenience: a compact home-screen widget with Lighting On/Off
 and the current effect. A visible widget is not a keep-alive mechanism; engine
@@ -292,7 +303,7 @@ Relevant findings: **R6, R7, R11, R12**.
    where supported; don't create competing screen/audio ownership.
 2. Normalize/smooth an audio envelope and apply it after the selected effect.
    Verify Ambient/Solid/Rainbow with sound on and off, and Breathing/Pulse with
-   sound paused while retaining saved On. Switching sound never replaces
+   sound paused while retaining the saved mode. Switching sound never replaces
    the chosen effect, colors, animation phase or capture source.
 3. End failed reads or bounded no-data timeouts, release on every exit,
    and reject old recorder callbacks. Nonblocking zero reads are temporarily
@@ -386,5 +397,5 @@ implemented and tested in bounded runs. Active legacy service policies and four
 startup/API receiver registrations are removed. See the
 [current state report](service-state-2026-10-21.md) and
 [sound report](sound-implementation-2026-10-21.md). Full capture/audio acceptance,
-remaining legacy component cleanup and the full device acceptance matrix are
+the full device acceptance matrix is
 still required; the POC is not complete.

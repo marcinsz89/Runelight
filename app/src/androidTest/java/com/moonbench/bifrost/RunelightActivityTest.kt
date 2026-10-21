@@ -14,15 +14,20 @@ import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.core.app.ActivityScenario
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.assertion.ViewAssertions.matches
+import androidx.test.espresso.assertion.ViewAssertions.doesNotExist
 import androidx.test.espresso.matcher.ViewMatchers.isDisplayed
 import androidx.test.espresso.matcher.ViewMatchers.isChecked
 import androidx.test.espresso.matcher.ViewMatchers.withId
 import androidx.test.espresso.matcher.ViewMatchers.withText
+import androidx.test.espresso.matcher.ViewMatchers.withEffectiveVisibility
+import androidx.test.espresso.matcher.ViewMatchers.Visibility
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.moonbench.bifrost.services.LEDService
 import com.moonbench.bifrost.services.LightingPhase
 import com.moonbench.bifrost.services.LightingState
+import com.moonbench.bifrost.services.LightingIntentStore
+import com.moonbench.bifrost.ui.RunelightShortcuts
 import androidx.lifecycle.Observer
 import com.google.android.material.button.MaterialButton
 import com.moonbench.bifrost.ui.ColorLevelTile
@@ -39,20 +44,53 @@ import org.junit.runner.RunWith
 class RunelightActivityTest {
     private val context: Context get() = InstrumentationRegistry.getInstrumentation().targetContext
 
-    private fun launchOnActiveDisplay(): ActivityScenario<RunelightActivity> {
+    private fun launchOnActiveDisplay(intent: Intent = Intent(context, RunelightActivity::class.java)): ActivityScenario<RunelightActivity> {
         // The Thor can keep display 0 OFF while display 4 is interactive. An
         // Espresso launch on the default screen then cannot regain window focus.
         val activeDisplay = context.getSystemService(DisplayManager::class.java).displays
             .firstOrNull { it.state == Display.STATE_ON && it.displayId != Display.DEFAULT_DISPLAY }
             ?: context.getSystemService(DisplayManager::class.java).getDisplay(Display.DEFAULT_DISPLAY)
         val options = ActivityOptions.makeBasic().apply { launchDisplayId = activeDisplay.displayId }
-        return ActivityScenario.launch(Intent(context, RunelightActivity::class.java), options.toBundle())
+        return ActivityScenario.launch(intent, options.toBundle())
     }
 
     @Before
     fun resetTestControls() {
         context.stopService(Intent(context, LEDService::class.java))
         context.getSharedPreferences("runelight_controls", Context.MODE_PRIVATE).edit().clear().commit()
+    }
+
+    @Test fun shortcutOpeningAfterInterruptionDoesNotRestartAmbientOrSound() {
+        context.getSharedPreferences("runelight_controls", Context.MODE_PRIVATE).edit()
+            .putString("effect", "AMBIENT").putBoolean("soundEnabled", true).commit()
+        val store = LightingIntentStore(context)
+        assertTrue(store.setWantedRunning(true))
+        try {
+            launchOnActiveDisplay(RunelightShortcuts.controlsIntent(context)).use { scenario ->
+                scenario.recreate()
+                scenario.onActivity {
+                    assertFalse(LEDService.isRunning)
+                    assertFalse(LEDService.hasCaptureSession)
+                    assertTrue(it.findViewById<MaterialButton>(R.id.effectAmbient).isChecked)
+                    assertTrue(store.wantedRunning)
+                }
+            }
+        } finally { store.setWantedRunning(false) }
+    }
+
+    @Test fun openShortcutMenuIsDismissedWhenTheHostIsRecreated() {
+        launchOnActiveDisplay().use { scenario ->
+            scenario.onActivity { it.findViewById<View>(R.id.quickMenuButton).performClick() }
+            // Espresso's global screen rectangle is incorrect for this popup on
+            // Thor display 4. Physical placement is checked separately by touch.
+            onView(withText(R.string.runelight_shortcut_add)).check(matches(withEffectiveVisibility(Visibility.VISIBLE)))
+            scenario.recreate()
+            onView(withText(R.string.runelight_shortcut_add)).check(doesNotExist())
+            scenario.onActivity {
+                assertTrue(it.findViewById<View>(R.id.quickMenuButton).isShown)
+                assertFalse(LEDService.isRunning)
+            }
+        }
     }
 
     @Test
@@ -64,8 +102,8 @@ class RunelightActivityTest {
                 scenario.onActivity {
                     it.findViewById<MaterialButton>(id).performClick()
                     assertFalse(it.findViewById<View>(R.id.soundTile).isEnabled)
-                    assertEquals("On", it.findViewById<android.widget.TextView>(R.id.soundState).text.toString())
-                    assertTrue(prefs.getBoolean("soundEnabled", false))
+                    assertEquals("Flow", it.findViewById<android.widget.TextView>(R.id.soundState).text.toString())
+                    assertEquals("LEVEL", prefs.getString("soundMode", null))
                 }
             }
             scenario.recreate()
@@ -74,7 +112,26 @@ class RunelightActivityTest {
                 it.findViewById<MaterialButton>(R.id.effectRainbow).performClick()
             }
             scenario.onActivity { assertTrue(it.findViewById<View>(R.id.soundTile).isEnabled) }
-            assertTrue(prefs.getBoolean("soundEnabled", false))
+            assertEquals("LEVEL", prefs.getString("soundMode", null))
+            assertFalse(LEDService.isRunning)
+        }
+    }
+
+    @Test fun savedBeatChoiceStaysVisibleWhilePausedAndSurvivesRecreation() {
+        val prefs = context.getSharedPreferences("runelight_controls", Context.MODE_PRIVATE)
+        prefs.edit().putString("soundMode", "BEAT").putString("effect", "BREATH").commit()
+        launchOnActiveDisplay().use { scenario ->
+            scenario.onActivity {
+                assertFalse(it.findViewById<View>(R.id.soundTile).isEnabled)
+                assertEquals("Beat", it.findViewById<android.widget.TextView>(R.id.soundState).text.toString())
+            }
+            scenario.recreate()
+            scenario.onActivity {
+                it.findViewById<MaterialButton>(R.id.effectSolid).performClick()
+                assertTrue(it.findViewById<View>(R.id.soundTile).isEnabled)
+                assertEquals("Beat", it.findViewById<android.widget.TextView>(R.id.soundState).text.toString())
+            }
+            assertEquals("BEAT", prefs.getString("soundMode", null))
             assertFalse(LEDService.isRunning)
         }
     }

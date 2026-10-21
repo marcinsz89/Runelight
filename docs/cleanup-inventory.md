@@ -1,69 +1,51 @@
-# POC cleanup inventory
+# 1.0 keep/remove inventory
 
-Working inventory, started 2026-10-20 and updated 2026-10-21. These are removal
-boundaries, not claims that the
-cleanup has finished. Source roots below are relative to
-`app/src/main/java/com/moonbench/bifrost/`. Preserve GPL attribution and existing
-settings data; removing a runtime feature does not authorize deleting user files.
+Updated 2026-10-21. The final source/resource cleanup is implemented; validation
+and limits are recorded in [the cleanup report](cleanup-1.0-2026-10-21.md).
+Paths below are relative to `app/src/main/java/com/moonbench/bifrost/`.
 
 ## Keep
 
 | Component | Ownership / dependencies | Verification |
 |---|---|---|
-| `RunelightActivity`, `ui/ColorLevelTile`, native layout/colors/drawables | Current UI; `runelight_controls` saved configuration; ColorPickerView 2.3.0 and shipped license | Native UI tests, lower/top layout, draft and Stop behavior |
-| `tools/LedController`, `LedFrameState`, `LatestValueWriter`, `LedOutputDispatcher` | One paced vendor writer and replaceable complete four-zone frames; closed drivers reject late writers | Frame/queue JVM tests, slow-Binder tests, actual Thor output and combined-load timing |
-| Native `ambient/*` and `audio/*` | Service-owned top capture and playback overlay; shared projection, explicit recorder cleanup, independent saved sound intent | Sampling/envelope JVM tests, capture/recorder lifetime tests, physical color/sound checks |
-| Static, Rainbow, Breath, Pulse animations | Retained plain effects; `LedAnimation`, Android Handler, driver | Output changes, independent levels, Stop cancellation, settled Solid idle |
-| `LEDService`, `LightingRuntime`, `LightingIntentStore` | Retained effect/output ownership, observed runtime and separate durable intent; legacy policy engine removed | Rapid Stop/Start, task removal, output feedback, stale results, interruption/manual resume |
-| `tools/CrashReporter`, basic app/theme/icon resources | Local diagnostics; no external reporting | Redaction/storage review and normal launch |
-| Debug capture probe and separate test-APK tone source | Bounded capture/audio investigation; tone source can show changing colors and playback-position beats; no route from the native controls | Capability/latency reports; verified absent from release manifest, mapping and DEX |
-| JVM and Android behavior regressions; opt-in vendor timing probe | Keep output coalescing, recorder cleanup, saved-On pause, fast color response and lifecycle checks. Vendor timing runs only with an explicit instrumentation argument and writes modest test colors, then black | 99 JVM tests, scoped Thor runs; manual benchmarks skipped by default; test classes ship only in the separate test APK |
+| `RunelightActivity`, `ui/*`, native resources and fonts | Lower-screen controls, saved configuration, inline editor; AppCompat, XML Material components, ColorPickerView | Native UI regressions; physical lower/top acceptance |
+| `ambient/*`, `audio/*` | Service-owned top capture and playback overlay; shared projection and explicit cleanup | Sampling/envelope/consent JVM tests; Android recorder/capture tests; Thor color/audio checks |
+| `animations/{LedAnimation,LedAnimationType,StaticAnimation,RainbowAnimation,BreathAnimation,PulseAnimation}` | Five supported effects including native Ambient | Stored-name compatibility, Android output/handoff regressions |
+| `services/{LEDService,LightingRuntime,LightingIntentStore,LightingNotice,LightingNotifications,BifrostTileService}` | Active resource/state ownership, separate wanted intent, direct Stop and existing Quick Settings identity | State/notice tests, service lifecycle, parsed merged-manifest contract |
+| `tools/{LedController,LedFrameState,LatestValueWriter,LedOutputDispatcher,DeviceInfo,CrashReporter}` | Serialized complete frames, bounded latest-frame queue, local diagnostics | Frame/queue tests; Android backpressure and opt-in vendor timing probe |
+| `BifrostApp` | Local crash handler and cancellation-only migration for earlier schedule tokens | Android migration regression; no receiver or new alarm |
+| Debug capture probes, JVM/Android behavior tests and test-APK tone fixture | Independent diagnostics; no route from normal UI | Compile debug/test APKs; prove debug fixtures absent from release |
+| GPL/upstream attribution and shipped font/color-picker notices | Derivative licensing | Source and APK notice inspection |
 
-The retained capture/audio implementation is extracted into the native
-service-owned paths above. The existing `ScreenAnalyser`,
-`AudioAnalyzer` and Ambient animations are not accepted wholesale: their lifecycle,
-held-target smoothing and failure handling still need replacement or correction.
+## Removed
 
-## Remove in dependency order
+- Old main/onboarding screens, dialogs, preset artwork and import/export/backup UI.
+- Profiles, charging/low-battery/adaptive policies, external API/leases/plugins,
+  plugin store and package queries.
+- Schedules, boot/package/time receivers and startup controllers. The one-purpose
+  alarm cancellation migration preserves the old PendingIntent identity without
+  depending on the removed receiver or deleting preferences/files.
+- Wallpaper service and settings; obsolete production Accessibility provider,
+  screen/audio analyzers and unsafe performance profiles.
+- Battery/CPU/audio-only and other effects outside the five-effect scope, their
+  enum entries, unused service constants and effect hooks.
+- Associated layouts/icons/strings/resources, manifest entries and obsolete unit
+  tests. The remaining manifest test parses Gradle's actual merged debug XML.
+- Network/wallpaper permissions, Compose Material3, the unused direct
+  ConstraintLayout dependency and plugin-only JVM JSON parser. Material's
+  transitive ConstraintLayout remains. Shared AndroidX/coroutine versions are
+  preserved explicitly where removing Compose would otherwise downgrade them.
 
-| Subsystem | Current callers / runtime hooks | Removal boundary and affected tests |
-|---|---|---|
-| Legacy entry UI/onboarding/dialogs | Manifest `MainActivity`, `StartupGuideActivity`; old tile and projection notification routes; `ServiceController`; preset/dialog/view helpers | Route retained entry points to native UI first. Remove old activities/layout/resources and Activity-owned delayed command controller with their last callers. Audit manifest activity tests. |
-| Profiles and charging/low-battery/adaptive policies | `LEDService` battery receiver, brightness observer, legacy policy timer; `AppProfileManager`; old UI/startup/external/package-removal code; `PACKAGE_USAGE_STATS` | Remove policy ownership from service and all enabling routes together; plain effects must not depend on `bifrost_prefs`. Then remove manager, usage-access setup, observer/receiver and policy resources. |
-| External API / leases / PIPBOY | Manifest exported `ExternalApiReceiver`, custom control permission; `external/*`; service external actions, snapshots, crossfade, lease timer and wake lock; plugin/profile users; `PackageRemovedReceiver` | Remove receiver/action/permission and engine branches with callers, then external types and contract tests. Remove `WAKE_LOCK` after confirming no retained capture need. |
-| Plugin store / live policies | Manifest `PluginStoreActivity`; `plugins/*`; old UI, presets and service `LivePolicy`; network permission | Remove UI/repository/install/launch routes and live-policy engine dependencies together. Then remove `INTERNET`, unused package queries and plugin tests. No network path belongs in POC. |
-| Schedules and boot startup | Manifest `BootReceiver`, `ScheduleReceiver`, `ScheduleActivity`; `schedule/*`; `HeimdallStartupManager`; package-replaced/boot/time-change actions; alarms | Remove schedule and boot hooks before deleting helpers. Retire persisted alarm registrations safely if any were created. Remove `RECEIVE_BOOT_COMPLETED`; update schedule tests intentionally. Do not implement an alternate restart watchdog. |
-| Preset/artwork/archive workflows | `BifrostApp.onCreate` runs `PresetMigration`; `presets/*`, `BackupArchiveTransfer`, `ThemeArchiveTransfer`; old UI, profiles, schedules, plugins | Extract any retained plain configuration first. Remove app-start preset migration with its consumers, archives, image/media pickers and owned resources; retire preset migration/default tests with the feature. |
-| Video wallpaper | Manifest `VideoLiveWallpaperService`, `res/xml/live_wallpaper`; `LiveWallpaperSettingsManager`, old UI and wallpaper permission | Remove service/settings/resources/callers and `SET_WALLPAPER`; update wallpaper manifest test. |
-| Extra effects / performance tiers | Service factory, `LedAnimationType`, `PerformanceProfile`, old UI/presets/external validators | Remove Battery/CPU/PIPBOY/Chase/Strobe/Sparkle/Rave/Fade/standalone audio/AmbiAurora after their consumers. Retain only four plain effects plus the new Ambient pipeline and independent sound overlay. Update enum/legacy-default tests. |
-| Old Accessibility provider | Manifest `BifrostAccessibilityService`, `res/xml/accessibility_service_config`; old analyzer/UI/plugin checks | Replace with the retained explicitly enabled bottom-capture provider only after its new ownership is tested. Keep top capture independent of this setup. Update accessibility manifest tests. |
-| Old Quick Settings tile behavior | Manifest `BifrostTileService` label; service refresh calls; `HeimdallStartupManager`, `MainActivity` consent/start route | Retain the requested Notification Center shortcut in the plan; replace its old preset/startup route with current state/commands. Resolve the known tile lint error when this component is revised. |
-
-The table records original dependencies and removal boundaries. The main manifest
-still declares legacy activities, wallpaper and Accessibility; the boot, schedule,
-external API and package-removal receivers have now been removed. Remaining legacy
-sources still compile and must not be described as frozen. AndroidX/material dependencies
-are shared with native controls and should not be deleted with old screens.
-Check merged manifests, resources, DEX/R8 output and retained behavior after each
-coherent deletion. No blanket lint suppression or dependency upgrade is needed.
+No preference files, reports, user-created files or saved controls are deleted.
+The Quick Settings service keeps its existing component name. The code namespace
+and application IDs remain unchanged.
 
 ## Freeze
 
-None selected yet. If a concrete algorithm/reference is worth retaining after
-replacement, move only the necessary source and attribution under
-`reference/legacy/`, outside all Android source/resource sets. Record its original
-dependencies, reason and restoration conditions there. A disabled setting or
-unreachable screen does not establish that a component is frozen.
+None. No retired component has a concrete restoration need; Git history contains
+its source. The independently maintained debug probes cover capture experiments.
+There is no frozen source hidden inside a compiled source/resource set.
 
-## Current ownership increment
-
-The first bounded change removes delayed Stop cleanup and UI-task-dependent
-continuation. A driver closes at teardown, so late writers cannot affect a newer
-service session. Solid's frame timer sleeps after exact convergence and wakes on
-edits. The [next state increment](service-state-2026-10-21.md) removes the service's
-profile, charging, adaptive brightness, external lease/plugin and old projection
-branches, adds durable wanted intent and an observed runtime model, removes four
-receiver registrations and their obsolete permissions, and retires preset migration
-at startup. The tile opens native controls instead of the old preset route.
-Source/resource/dependency deletion and remaining legacy manifest components are
-still pending. Nothing has been frozen; automatic recovery and the POC are not complete.
+Stereo playback reaction is deferred to the next version. Bottom-source capture,
+long game sessions and broader wake/lock/OLED behavior remain device acceptance
+work; source cleanup does not establish those results.

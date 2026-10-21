@@ -16,6 +16,13 @@ class LedAnimationTypeLegacyTest {
         }
     }
 
+    @Test fun retiredEffectsCannotCreateRuntimeOwners() {
+        listOf("AUDIO_REACTIVE", "AMBIAURORA", "BATTERY_INDICATOR", "CPU_TEMPERATURE",
+            "STROBE", "SPARKLE", "FADE_TRANSITION", "RAVE", "CHASE", "PIPBOY").forEach {
+            assertNull(it, LedAnimationType.fromStoredName(it))
+        }
+    }
+
     @Test fun unknownAndEmptyNamesGiveNull() {
         assertNull(LedAnimationType.fromStoredName("NOPE"))
         assertNull(LedAnimationType.fromStoredName(""))

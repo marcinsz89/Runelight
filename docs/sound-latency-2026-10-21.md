@@ -111,3 +111,28 @@ tests and bounded debug/test fixtures are retained; release manifest, R8 mapping
 and DEX checks confirm that none of these probe/test classes ship in the release
 APK. Raw diagnostics, vendor binaries and build artifacts remain ignored locally.
 No dependency update, UI-layout change or push is included.
+
+## Real-music observation after Beat — 2026-10-21
+
+The owner reported that a YouTube metronome aligned well but some music felt
+slightly delayed, then reported that a different video felt good. No timing,
+buffering or response adjustment was made from this subjective comparison.
+
+A read-only sample of the active Ambient/Beat session collected 12 AudioFlinger
+record-track snapshots over 23.1 seconds, without stopping/reinstalling Runelight,
+changing settings or recording PCM. One recorder/session remained active at
+16kHz. Its unread frames alternated between 0 and 512 (0–32ms), with a reported
+record latency of 63.39–95.96ms. No increasing unread queue was observed in this
+short sample. These are capture-side OS counters, not measured audible-sound to
+physical-LED latency, and do not establish long-session or LED-driver timing.
+
+The paced writer still permits only one in-flight command and one replaceable
+pending frame. A fixed capture/processing/output delay and content-dependent Beat
+threshold timing remain possible even without accumulating work. If the symptom
+recurs, retain the exact content/timestamp and compare modes before tuning. A
+timestamped capture/output diagnostic would be the next bounded measurement;
+do not run another synthetic vendor load test during the owner's music session.
+
+Raw aggregate dumps/counter samples stay in ignored
+`local-test-results/2026-10-21-live-music/`. No code, installed APK, volume, playback
+or capture session was changed by this follow-up.

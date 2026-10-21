@@ -2,11 +2,9 @@ package com.moonbench.bifrost.services
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.app.Notification
 import android.app.Activity
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -20,7 +18,6 @@ import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.moonbench.bifrost.R
-import com.moonbench.bifrost.RunelightActivity
 import com.moonbench.bifrost.animations.*
 import com.moonbench.bifrost.ambient.AmbientSamplingMode
 import com.moonbench.bifrost.ambient.NativeAmbientAnimation
@@ -40,50 +37,16 @@ class LEDService : Service() {
         const val EXTRA_CAPTURE_RESULT = "runelight.captureResult"
         const val EXTRA_CAPTURE_TICKET = "runelight.captureTicket"
         const val EXTRA_SOUND_ENABLED = "runelight.soundEnabled"
+        const val EXTRA_SOUND_MODE = "runelight.soundMode"
         const val EXTRA_AMBIENT_SAMPLING = "runelight.ambientSampling"
         const val ACTION_START = "io.github.marcinsz89.runelight.START"
-        // Compilation compatibility for remaining legacy sources, not accepted runtime commands.
         const val CHANNEL_ID = "LEDServiceChannel"
         const val NOTIFICATION_ID = 4242
+        internal const val FAILURE_NOTIFICATION_ID = 4243
         const val ACTION_STOP = "com.moonbench.bifrost.STOP"
-        const val ACTION_KILL = "com.moonbench.bifrost.KILL"
         const val ACTION_UPDATE_PARAMS = "com.moonbench.bifrost.UPDATE_PARAMS"
         const val EXTRA_LEFT_BRIGHTNESS_PERCENT = "leftBrightnessPercent"
         const val EXTRA_RIGHT_BRIGHTNESS_PERCENT = "rightBrightnessPercent"
-        const val ACTION_FORCE_APP_PROFILE_RESOLUTION = "com.moonbench.bifrost.FORCE_APP_PROFILE_RESOLUTION"
-        const val ACTION_SUPPLY_PROJECTION = "com.moonbench.bifrost.SUPPLY_PROJECTION"
-        const val ACTION_EXTERNAL_DISPLAY = "com.moonbench.bifrost.EXTERNAL_DISPLAY"
-        const val ACTION_EXTERNAL_CLEAR = "com.moonbench.bifrost.EXTERNAL_CLEAR"
-        const val ACTION_EXTERNAL_PULSE = "com.moonbench.bifrost.EXTERNAL_PULSE"
-        const val EXTRA_EXTERNAL_PULSE_KIND = "external.pulseKind"
-        const val EXTRA_ALLOW_BACKGROUND_RUN = "allowBackgroundRun"
-        const val EXTRA_BATTERY_OVERRIDE_WHEN_PLUGGED = "batteryOverrideWhenPlugged"
-        const val EXTRA_LOW_BATTERY_ALERT_ENABLED = "lowBatteryAlertEnabled"
-        const val EXTRA_LOW_BATTERY_ALERT_THRESHOLD = "lowBatteryAlertThreshold"
-        const val EXTRA_DISABLE_LOW_BATTERY_ALERT_WHILE_CHARGING = "disableLowBatteryAlertWhileCharging"
-        const val EXTRA_PERSISTENT_NOTIFICATION = "persistentNotification"
-        const val EXTRA_ADAPTIVE_BRIGHTNESS = "adaptiveBrightness"
-        const val EXTRA_EXTERNAL_CALLER_PACKAGE = "external.callerPackage"
-        const val EXTRA_EXTERNAL_EFFECT = "external.effect"
-        const val EXTRA_EXTERNAL_COLOR = "external.color"
-        const val EXTRA_EXTERNAL_COLOR_RIGHT = "external.colorRight"
-        const val EXTRA_EXTERNAL_INTENSITY = "external.intensity"
-        const val EXTRA_EXTERNAL_SPEED = "external.speed"
-        const val EXTRA_EXTERNAL_SMOOTHNESS = "external.smoothness"
-        const val EXTRA_EXTERNAL_SENSITIVITY = "external.sensitivity"
-        const val EXTRA_EXTERNAL_PRIORITY = "external.priority"
-        const val EXTRA_EXTERNAL_TERMINATOR = "external.terminator"
-        const val EXTRA_EXTERNAL_DURATION_MS = "external.durationMs"
-        const val EXTRA_EXTERNAL_PHASE_SECONDS = "external.phaseSeconds"
-        const val EXTRA_EXTERNAL_FLICKERING = "external.flickering"
-        const val EXTRA_EXTERNAL_BURST_WALL_MS = "external.burstWallMs"
-        const val TERMINATOR_DURATION = "DURATION"
-        const val TERMINATOR_NEXT_COMMAND = "NEXT_COMMAND"
-        const val TERMINATOR_EXPLICIT_CLEAR = "EXPLICIT_CLEAR"
-        const val EXTRA_FADE_END_COLOR = "fadeEndColor"
-        const val EXTRA_FADE_END_RIGHT_COLOR = "fadeEndRightColor"
-        const val PREF_AMBILIGHT_USE_MEDIA_PROJECTION = "ambilight_use_media_projection"
-        const val DEFAULT_AMBILIGHT_USE_MEDIA_PROJECTION = true
 
         private val mutableSound = MutableLiveData(SoundState())
         val soundState: LiveData<SoundState> get() = mutableSound
@@ -127,9 +90,12 @@ class LEDService : Service() {
     private var captureEpoch = 0L
     private var audio: PlaybackAudioCapture? = null
     private var audioEpoch = 0L
-    private var soundWanted = false
+    private var soundMode = SoundMode.OFF
+    private val soundWanted: Boolean get() = soundMode.enabled
     private var soundPhase = SoundPhase.OFF
     private var audioFailed = false
+    private var foreground = false
+    private var lastNotice: LightingNotice? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -189,7 +155,13 @@ class LEDService : Service() {
         // Only fresh, pending consent may create a session. Never replay grants.
         if (intent.hasExtra(EXTRA_CAPTURE_GRANT) &&
             !projectionRequests.consume(intent.getLongExtra(EXTRA_CAPTURE_TICKET, -1))) {
-            if (!isRunning) { promoteToForeground(); ownsSession = true; cleanupAndStop(failure = LightingFailure.CAPTURE_LOST) }
+            if (!isRunning) {
+                promoteToForeground()
+                ownsSession = true
+                // A grant invalidated by Stop is an obsolete request, not a new
+                // capture failure that should notify the user after stopping.
+                cleanupAndStop(failure = LightingFailure.CAPTURE_LOST, showFailureNotice = false)
+            }
             return
         }
         if (!intent.hasExtra(EXTRA_CAPTURE_GRANT)) projectionRequests.invalidate()
@@ -198,7 +170,7 @@ class LEDService : Service() {
         val keepOutput = runtime.state.phase == LightingPhase.RUNNING &&
             currentAnimation != null && ledController?.isAvailable == true
         selectedEffect = type
-        soundWanted = intent.getBooleanExtra(EXTRA_SOUND_ENABLED, soundWanted)
+        soundMode = requestedSoundMode(intent)
         audioFailed = false
         val token = runtime.begin(type, keepOutput)
         publishState()
@@ -276,10 +248,10 @@ class LEDService : Service() {
 
     private fun handleUpdateParams(intent: Intent) {
         val animation = currentAnimation ?: return
-        if (intent.hasExtra(EXTRA_SOUND_ENABLED)) {
-            val next = intent.getBooleanExtra(EXTRA_SOUND_ENABLED, soundWanted)
-            if (next != soundWanted) audioFailed = false
-            soundWanted = next
+        if (intent.hasExtra(EXTRA_SOUND_MODE) || intent.hasExtra(EXTRA_SOUND_ENABLED)) {
+            val next = requestedSoundMode(intent)
+            if (next != soundMode) audioFailed = false
+            soundMode = next
         }
         if (intent.hasExtra(EXTRA_CAPTURE_GRANT)) {
             if (!projectionRequests.consume(intent.getLongExtra(EXTRA_CAPTURE_TICKET, -1))) return
@@ -385,17 +357,26 @@ class LEDService : Service() {
                 recorder.start()
             }
         }
+        audio?.setMode(soundMode)
         publishSound()
     }
 
+    private fun requestedSoundMode(intent: Intent): SoundMode = when {
+        intent.hasExtra(EXTRA_SOUND_MODE) -> SoundMode.fromStoredName(intent.getStringExtra(EXTRA_SOUND_MODE))
+        intent.hasExtra(EXTRA_SOUND_ENABLED) -> if (intent.getBooleanExtra(EXTRA_SOUND_ENABLED, false)) SoundMode.LEVEL else SoundMode.OFF
+        else -> soundMode
+    }
+
     private fun publishSound() {
-        val state = SoundState(soundPhase, capture?.mediaProjection != null)
+        val state = SoundState(soundPhase, capture?.mediaProjection != null, soundMode)
         if (mutableSound.value != state) mutableSound.value = state
+        refreshNotification()
     }
 
     private fun publishState() {
         if (mutableState.value != runtime.state) mutableState.value = runtime.state
         BifrostTileService.refreshFrom(this)
+        refreshNotification()
     }
 
     private fun cancelStartupTimeout() {
@@ -403,7 +384,8 @@ class LEDService : Service() {
         startupTimeout = null
     }
 
-    private fun cleanupAndStop(stopService: Boolean = true, failure: LightingFailure? = null) {
+    private fun cleanupAndStop(stopService: Boolean = true, failure: LightingFailure? = null,
+        showFailureNotice: Boolean = true) {
         runtime.end(failure) // Invalidate callbacks before any teardown, including off writes.
         publishState()
         stopping = true
@@ -418,7 +400,17 @@ class LEDService : Service() {
         soundPhase = SoundPhase.OFF
         publishSound()
         selectedEffect = null
+        foreground = false
+        lastNotice = null
         stopForeground(STOP_FOREGROUND_REMOVE)
+        getSystemService(NotificationManager::class.java).apply {
+            cancel(NOTIFICATION_ID)
+            cancel(FAILURE_NOTIFICATION_ID)
+        }
+        // A dismissed capture/failure notice cannot resume anything. Only a new
+        // user Start may acquire resources; explicit Stop leaves no notice.
+        if (failure != null && showFailureNotice)
+            LightingNotice.from(runtime.state, SoundState())?.let(::postNotice)
         if (stopService) stopSelf(latestStartId)
     }
 
@@ -432,27 +424,36 @@ class LEDService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun promoteToForeground(capturing: Boolean = false) {
+        getSystemService(NotificationManager::class.java).cancel(FAILURE_NOTIFICATION_ID)
         val type = (if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0) or
             (if (capturing) ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION else 0)
-        startForeground(NOTIFICATION_ID, createNotification(), type)
+        val notice = LightingNotice.from(runtime.state, SoundState(soundPhase, mode = soundMode))
+            ?.takeIf { it.ongoing }
+            ?: LightingNotice(R.string.runelight_starting, R.string.runelight_notification_body, true)
+        startForeground(NOTIFICATION_ID, LightingNotifications.build(this, notice), type)
+        foreground = true
+        lastNotice = notice
     }
 
-    private fun createNotification(): Notification {
-        val stopPending = PendingIntent.getService(this, 1,
-            Intent(this, LEDService::class.java).setAction(ACTION_STOP),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        val openPending = PendingIntent.getActivity(this, 0,
-            Intent(this, RunelightActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            }, PendingIntent.FLAG_IMMUTABLE)
-        return Notification.Builder(this, CHANNEL_ID)
-            .setContentTitle(getString(R.string.runelight_notification_title))
-            .setContentText(getString(R.string.runelight_notification_body))
-            .setSmallIcon(R.drawable.ic_runelight)
-            .setContentIntent(openPending)
-            .addAction(android.R.drawable.ic_delete, getString(R.string.runelight_stop), stopPending)
-            .setOnlyAlertOnce(true)
-            .setOngoing(true)
-            .build()
+    private fun refreshNotification() {
+        // State publication during teardown must never re-post an active notice.
+        if (!foreground || stopping) return
+        val notice = LightingNotice.from(runtime.state, SoundState(soundPhase, mode = soundMode)) ?: return
+        if (!notice.ongoing || notice == lastNotice) return
+        lastNotice = notice
+        postNotice(notice)
+    }
+
+    private fun postNotice(notice: LightingNotice) {
+        // Foreground promotion still supplies its mandatory notification when
+        // permission is denied. Optional drawer updates/errors must not block LEDs.
+        if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
+        try {
+            getSystemService(NotificationManager::class.java)
+                .notify(if (notice.ongoing) NOTIFICATION_ID else FAILURE_NOTIFICATION_ID,
+                    LightingNotifications.build(this, notice))
+        } catch (e: SecurityException) {
+            Log.w(TAG, "Notification permission changed", e)
+        }
     }
 }

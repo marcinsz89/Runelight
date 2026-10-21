@@ -26,10 +26,12 @@ public final class TonePlaybackFixtureActivity extends Activity {
     private AudioTrack track;
     private long startedAt;
     private boolean syncPattern;
+    private boolean beatPattern;
 
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         syncPattern = getIntent().getBooleanExtra("sync_pattern", false);
+        beatPattern = getIntent().getBooleanExtra("beat_pattern", false);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         getWindow().setDecorFitsSystemWindows(false);
         setContentView(new View(this) {
@@ -43,10 +45,10 @@ public final class TonePlaybackFixtureActivity extends Activity {
                 canvas.drawRect(getWidth() / 2f, 0, getWidth(), getHeight(), paint);
                 paint.setColor(Color.WHITE);
                 paint.setTextSize(18);
-                canvas.drawText(syncPattern ? "Sync check: changing picture + 2 beats/sec" : "Separate-UID playback fixture", 10, 24, paint);
-                if (syncPattern && head % (44100 / 2) < 44100 / 10)
+                canvas.drawText(beatPattern ? "Beat check: quiet melody + bass hits" : syncPattern ? "Sync check: changing picture + 2 beats/sec" : "Separate-UID playback fixture", 10, 24, paint);
+                if ((syncPattern || beatPattern) && head % (44100 / 2) < 44100 / 10)
                     canvas.drawCircle(getWidth() / 2f, getHeight() / 2f, getHeight() * .08f, paint);
-                if (syncPattern && track != null) postInvalidateOnAnimation();
+                if ((syncPattern || beatPattern) && track != null) postInvalidateOnAnimation();
             }
         });
         try {
@@ -59,7 +61,9 @@ public final class TonePlaybackFixtureActivity extends Activity {
                 int second = index / rate;
                 int amplitude = syncPattern ? (index % (rate / 2) < rate / 10 ? 6600 : 0)
                     : second == 0 ? 2200 : second == 1 ? 6600 : 0;
-                data[index] = (short) (amplitude * Math.sin(2 * Math.PI * 440 * index / rate));
+                data[index] = beatPattern ? (short) (1800 * Math.sin(2 * Math.PI * 880 * index / rate)
+                    + (index % (rate / 2) < rate / 10 ? 10000 * Math.sin(2 * Math.PI * 80 * index / rate) : 0))
+                    : (short) (amplitude * Math.sin(2 * Math.PI * 440 * index / rate));
             }
             AudioAttributes attributes = new AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_GAME)
@@ -83,6 +87,7 @@ public final class TonePlaybackFixtureActivity extends Activity {
                             .put("play_state", track.getPlayState()).put("playback_head", track.getPlaybackHeadPosition())
                             .put("session_id", track.getAudioSessionId()).put("started_elapsed_ms", startedAt)
                             .put("sync_pattern", syncPattern)
+                            .put("beat_pattern", beatPattern)
                             .put("updated_elapsed_ms", SystemClock.elapsedRealtime()));
                     } catch (Exception ignored) { /* Observation must not crash playback. */ }
                     main.postDelayed(this, 500);

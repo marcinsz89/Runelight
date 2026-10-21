@@ -1,13 +1,16 @@
 package com.moonbench.bifrost
 
 import android.app.Activity
+import android.app.StatusBarManager
 import android.Manifest
 import android.animation.ValueAnimator
 import android.content.Intent
+import android.content.ComponentName
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.StateListDrawable
+import android.graphics.drawable.Icon
 import android.media.projection.MediaProjectionConfig
 import android.media.projection.MediaProjectionManager
 import android.os.Build
@@ -15,12 +18,15 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.provider.Settings
 import android.view.View
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.appcompat.widget.PopupMenu
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import com.google.android.material.button.MaterialButton
@@ -30,7 +36,9 @@ import com.moonbench.bifrost.animations.LedAnimationType
 import com.moonbench.bifrost.ambient.AmbientSamplingMode
 import com.moonbench.bifrost.audio.SoundPolicy
 import com.moonbench.bifrost.audio.SoundPhase
+import com.moonbench.bifrost.audio.SoundMode
 import com.moonbench.bifrost.services.LEDService
+import com.moonbench.bifrost.services.BifrostTileService
 import com.moonbench.bifrost.services.LightingPhase
 import com.moonbench.bifrost.services.LightingFailure
 import com.moonbench.bifrost.services.LightingIntentStore
@@ -45,6 +53,7 @@ class RunelightActivity : AppCompatActivity() {
     private val prefs by lazy { getSharedPreferences("runelight_controls", MODE_PRIVATE) }
     private val handler = Handler(Looper.getMainLooper())
     private val effectMotion = EffectSelectionMotion()
+    private var controlsMenu: PopupMenu? = null
     private lateinit var lightingTile: MaterialCardView
     private lateinit var lightingState: TextView
     private lateinit var status: TextView
@@ -70,7 +79,8 @@ class RunelightActivity : AppCompatActivity() {
     private var captureTicket = -1L
     private var captureUpdatesOnly = false
     private var pendingAudioStart = false
-    private var soundEnabled = false
+    private var soundMode = SoundMode.OFF
+    private val soundEnabled: Boolean get() = soundMode.enabled
     private var ambientSampling = AmbientSamplingMode.EDGES
     private val waitingForCapture: Boolean get() = LEDService.projectionRequests.isPending(captureTicket)
 
@@ -163,7 +173,7 @@ class RunelightActivity : AppCompatActivity() {
         captureTicket = savedInstanceState?.getLong("captureTicket", -1L) ?: -1L
         captureUpdatesOnly = savedInstanceState?.getBoolean("captureUpdatesOnly") ?: false
         pendingAudioStart = savedInstanceState?.getBoolean("audioStart") ?: false
-        soundEnabled = prefs.getBoolean("soundEnabled", false)
+        soundMode = SoundMode.fromStoredName(prefs.getString("soundMode", null), prefs.getBoolean("soundEnabled", false))
         speed = prefs.getInt("speed", 50).coerceIn(0, 100)
         leftColor = prefs.getInt("leftColor", leftColor)
         rightColor = prefs.getInt("rightColor", rightColor)
@@ -212,7 +222,7 @@ class RunelightActivity : AppCompatActivity() {
         }
         findViewById<View>(R.id.soundTile).setOnClickListener {
             if (!SoundPolicy.supports(effect)) return@setOnClickListener
-            soundEnabled = !soundEnabled
+            soundMode = soundMode.next()
             saveControls()
             updateParameters()
             if (soundEnabled) {
@@ -235,6 +245,7 @@ class RunelightActivity : AppCompatActivity() {
             prefs.edit { putBoolean("dark", dark) }
             delegate.localNightMode = if (dark) AppCompatDelegate.MODE_NIGHT_YES else AppCompatDelegate.MODE_NIGHT_NO
         }
+        findViewById<View>(R.id.quickMenuButton).setOnClickListener(::showControlsMenu)
 
         val group = findViewById<MaterialButtonToggleGroup>(R.id.effectButtons)
         group.check(effects.entries.first { it.value == effect }.key)
@@ -338,11 +349,66 @@ class RunelightActivity : AppCompatActivity() {
     }
 
     override fun onStop() {
+        controlsMenu?.dismiss()
+        controlsMenu = null
         effectMotion.finish()
         uiVisible = false
         clearColorPreview(restore = true)
         handler.removeCallbacks(startTimeout)
         super.onStop()
+    }
+
+    private fun showControlsMenu(anchor: View) {
+        controlsMenu?.dismiss()
+        controlsMenu = PopupMenu(this, anchor).also { menu ->
+            menu.inflate(R.menu.runelight_controls)
+            menu.setOnMenuItemClickListener { item ->
+                when (item.itemId) {
+                    R.id.addQuickSettingsShortcut -> requestQuickSettingsShortcut()
+                    R.id.notificationSettings -> try {
+                        startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                            .putExtra(Settings.EXTRA_APP_PACKAGE, packageName))
+                    } catch (_: android.content.ActivityNotFoundException) {
+                        Toast.makeText(this, R.string.runelight_notification_settings_unavailable, Toast.LENGTH_LONG).show()
+                    }
+                    else -> return@setOnMenuItemClickListener false
+                }
+                true
+            }
+            menu.setOnDismissListener { if (controlsMenu === menu) controlsMenu = null }
+            menu.show()
+        }
+    }
+
+    private fun requestQuickSettingsShortcut() {
+        val manager = getSystemService(StatusBarManager::class.java)
+        if (manager == null) {
+            showShortcutResult(R.string.runelight_shortcut_manual)
+            return
+        }
+        try {
+            // A deliberate foreground action only; never prompt on launch/wake.
+            manager.requestAddTileService(ComponentName(this, BifrostTileService::class.java),
+                getString(R.string.app_name), Icon.createWithResource(this, R.drawable.ic_runelight),
+                mainExecutor) { result ->
+                when (result) {
+                    StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ADDED,
+                    StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ALREADY_ADDED -> {
+                        BifrostTileService.refreshFrom(this)
+                        showShortcutResult(R.string.runelight_shortcut_added)
+                    }
+                    StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_NOT_ADDED -> Unit // Respect cancellation quietly.
+                    else -> showShortcutResult(R.string.runelight_shortcut_manual)
+                }
+            }
+        } catch (_: RuntimeException) {
+            showShortcutResult(R.string.runelight_shortcut_manual)
+        }
+    }
+
+    private fun showShortcutResult(message: Int) {
+        if (!isDestroyed && !isFinishing && uiVisible)
+            Toast.makeText(this, message, Toast.LENGTH_LONG).show()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -369,7 +435,8 @@ class RunelightActivity : AppCompatActivity() {
 
     private fun saveControls() {
         prefs.edit {
-            putBoolean("soundEnabled", soundEnabled)
+            putString("soundMode", soundMode.name)
+            remove("soundEnabled")
             putString("ambientSampling", ambientSampling.name)
             remove("wholeScreen")
             putString("effect", effect.name)
@@ -450,7 +517,7 @@ class RunelightActivity : AppCompatActivity() {
     }
 
     private fun parameterIntent() = Intent(this, LEDService::class.java).apply {
-        putExtra(LEDService.EXTRA_SOUND_ENABLED, soundEnabled)
+        putExtra(LEDService.EXTRA_SOUND_MODE, soundMode.name)
         putExtra(LEDService.EXTRA_AMBIENT_SAMPLING, ambientSampling.name)
         putExtra("animationColor", leftColor)
         putExtra("animationRightColor", rightColor)
@@ -571,13 +638,16 @@ class RunelightActivity : AppCompatActivity() {
             alpha = if (supportsSound) 1f else 0.4f
             isActivated = soundEnabled && (!supportsSound || !LEDService.isRunning || sound?.phase == SoundPhase.ACTIVE)
             contentDescription = getString(if (!supportsSound) R.string.runelight_sound_paused_description else R.string.runelight_sound_toggle_description,
-                getString(if (soundEnabled) R.string.runelight_on else R.string.runelight_off))
+                getString(soundModeLabel()))
         }
         findViewById<TextView>(R.id.soundState).setText(when {
             soundEnabled && supportsSound && soundUnavailable -> R.string.runelight_paused
             soundEnabled && supportsSound && LEDService.isRunning && sound?.phase == SoundPhase.STARTING -> R.string.runelight_starting
-            else -> if (soundEnabled) R.string.runelight_on else R.string.runelight_off
+            else -> soundModeLabel()
         })
+        listOf(R.id.soundOffDot, R.id.soundLevelDot, R.id.soundBeatDot).forEachIndexed { index, id ->
+            findViewById<View>(id).alpha = if (index == soundMode.ordinal) 1f else 0.25f
+        }
         val active = runtime?.phase == LightingPhase.RUNNING
         if (active && editingRight != null && !colorPreviewSent) requestColorPreview()
         if (lightingTile.isActivated != active) {
@@ -620,5 +690,11 @@ class RunelightActivity : AppCompatActivity() {
         }
         status.visibility = if (error == null) View.GONE else View.VISIBLE
         error?.let(status::setText)
+    }
+
+    private fun soundModeLabel() = when (soundMode) {
+        SoundMode.OFF -> R.string.runelight_off
+        SoundMode.LEVEL -> R.string.runelight_sound_flow
+        SoundMode.BEAT -> R.string.runelight_beat
     }
 }

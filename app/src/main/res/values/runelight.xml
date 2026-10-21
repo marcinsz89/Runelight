@@ -115,7 +115,8 @@
     <string name="runelight_copy_right_settings">Copy right color and brightness</string>
     <string name="runelight_percent">%1$d%%</string>
     <string name="runelight_sound">React to sound</string>
-    <string name="runelight_sound_unavailable">React to sound. Not available in this build.</string>
+    <string name="runelight_sound_flow">Flow</string>
+    <string name="runelight_beat">Beat</string>
     <string name="runelight_appearance">Switch light or dark appearance</string>
     <string name="runelight_appearance_symbol">◐</string>
     <string name="runelight_left_color">Left color</string>
@@ -123,8 +124,23 @@
     <string name="runelight_apply_color">Apply</string>
     <string name="runelight_cancel_color">Cancel</string>
     <string name="runelight_speed">Speed</string>
-    <string name="runelight_notification_title">Lighting is active</string>
     <string name="runelight_notification_body">Tap to open Runelight</string>
+    <string name="runelight_more">More options</string>
+    <string name="runelight_shortcut_add">Add Quick Settings shortcut</string>
+    <string name="runelight_shortcut_added">Runelight shortcut is in Quick Settings.</string>
+    <string name="runelight_shortcut_manual">Open Quick Settings, tap Edit, then add Runelight.</string>
+    <string name="runelight_shortcut_description">Runelight, %1$s. Open lighting controls.</string>
+    <string name="runelight_notification_settings">Notification settings</string>
+    <string name="runelight_notification_settings_unavailable">Notification settings are unavailable on this device.</string>
+    <string name="runelight_notice_stopped">Lighting stopped</string>
+    <string name="runelight_notice_capture_lost">Screen capture stopped. Tap to open Runelight and reconnect.</string>
+    <string name="runelight_notice_sound_active">Reacting to sound · Tap for controls</string>
+    <string name="runelight_notice_beat_active">Reacting to beats · Tap for controls</string>
+    <string name="runelight_notice_sound_starting">Starting sound…</string>
+    <string name="runelight_notice_sound_paused">Sound paused for this effect · Tap for controls</string>
+    <string name="runelight_notice_sound_permission">Sound paused · Tap to allow audio capture</string>
+    <string name="runelight_notice_sound_consent">Sound paused · Tap to reconnect capture</string>
+    <string name="runelight_notice_sound_failed">Sound stopped · Tap to open Runelight and retry</string>
     <string name="runelight_sampling">Sampling</string>
     <string name="runelight_sampling_edges">Edges</string>
     <string name="runelight_sampling_halves">Screen halves</string>
@@ -135,8 +151,8 @@
     <string name="runelight_capture_lost">Capture stopped. Tap Start to reconnect.</string>
     <string name="runelight_paused">Paused</string>
     <string name="runelight_sound_paused_description">Sound %1$s, paused for Breathing and Pulse. Your preference is kept.</string>
-    <string name="runelight_sound_toggle_description">Sound %1$s. Tap to toggle playback reaction.</string>
+    <string name="runelight_sound_toggle_description">Sound %1$s. Tap to cycle Off, Flow and Beat.</string>
     <string name="runelight_sound_permission">Sound needs audio permission. Tap here to allow playback capture.</string>
     <string name="runelight_sound_consent">Sound needs capture consent. Tap here to reconnect.</string>
-    <string name="runelight_sound_failed">Sound capture stopped. Toggle sound off/on to retry. Lighting continues.</string>
+    <string name="runelight_sound_failed">Sound capture stopped. Change sound mode to retry. Lighting continues.</string>
 </resources>

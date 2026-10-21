@@ -7,6 +7,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.moonbench.bifrost.audio.PlaybackAudioCapture
 import com.moonbench.bifrost.audio.PlaybackRecorder
 import com.moonbench.bifrost.audio.SoundPhase
+import com.moonbench.bifrost.audio.SoundMode
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -15,6 +16,40 @@ import java.util.concurrent.atomic.AtomicInteger
 
 @RunWith(AndroidJUnit4::class)
 class PlaybackAudioCaptureTest {
+    @Test fun changingResponseModeReusesTheRecorderAndDoesNotRestartCapture() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val allocations = AtomicInteger()
+        val starts = AtomicInteger()
+        val closes = AtomicInteger()
+        val states = CopyOnWriteArrayList<SoundPhase>()
+        val levels = CopyOnWriteArrayList<Float>()
+        lateinit var capture: PlaybackAudioCapture
+        instrumentation.runOnMainSync {
+            capture = PlaybackAudioCapture(instrumentation.targetContext, null, Handler(Looper.getMainLooper()),
+                { levels.add(it) }, { states.add(it) }) {
+                allocations.incrementAndGet()
+                object : PlaybackRecorder {
+                    override fun start() { starts.incrementAndGet() }
+                    override fun read(buffer: ShortArray): Int { buffer.fill(2000); return 400 }
+                    override fun close() { closes.incrementAndGet() }
+                }
+            }
+            capture.start()
+        }
+        try {
+            Thread.sleep(175)
+            assertTrue(levels.last() > 0.1f)
+            instrumentation.runOnMainSync { capture.setMode(SoundMode.BEAT) }
+            Thread.sleep(175)
+            assertEquals(0f, levels.last(), 0.01f)
+            instrumentation.runOnMainSync { capture.setMode(SoundMode.LEVEL) }
+            Thread.sleep(175)
+            assertTrue(levels.last() > 0.1f)
+            assertEquals(1, allocations.get()); assertEquals(1, starts.get()); assertEquals(0, closes.get())
+            assertEquals(listOf(SoundPhase.STARTING, SoundPhase.ACTIVE), states.toList())
+        } finally { instrumentation.runOnMainSync { capture.close() } }
+        assertEquals(1, closes.get())
+    }
     @Test fun failedReadReleasesOnceAndNeverRetriesOrPublishesLateLevels() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val reads = AtomicInteger()
