@@ -18,7 +18,10 @@
 - Current lower-screen controls do not scroll: full-tile Lighting/sound toggles,
   an accent effect strip, and Left/Right tiles dragged for independent brightness
   or tapped for color. Animated effects show a matching vertical Speed tile in
-  the middle. Normal status is quiet; show actionable errors only. The inline
+  the middle. Ambient replaces Speed with Sampling: Edges, Screen halves, Full
+  screen; all are active choices, with independent side levels. Native top capture
+  uses the service-owned `ambient/` path, not the inherited analyzer. Normal status
+  is quiet; show actionable errors only. The inline
   wheel replaces configuration while keeping
   Stop visible. Copy-other-side includes color and brightness as a draft.
 - Use plain product labels: Lighting, Start/Stop, effect, brightness and sound.

@@ -31,6 +31,11 @@ probe Home/ADB display movement and consent denial/recovery now have scoped
 passes. Actual LED Ambient/audio and long-run performance remain unproven;
 the broader table still requires end-to-end implementation.
 
+The [native Ambient increment](ambient-implementation-2026-10-21.md) now has
+scoped top-source/color and retained-session checks plus sampling/driver regressions.
+It does not pass bottom/audio, actual capture-specific Pathfinder, system
+revocation or long-game acceptance. The historical baseline table remains below.
+
 The [ownership/handoff increment](service-ownership-2026-10-21.md) adds scoped
 passes for closed-driver fencing, Solid timer idle, rapid Stop/Start, UI task
 removal and plain-effect handoff. Lower-screen Home/sleep/wake unexpectedly

@@ -7,6 +7,7 @@ Selected by the owner on 2026-10-20; then refined to give Runelight its own iden
 - [Saved preview image](quick-tiles.png).
 - Current native configuration in [dark](native-quick-tiles.png) and
   [light](native-quick-tiles-light.png), plus the [inline picker](native-color-picker.png).
+- [Native Ambient controls](native-ambient.png) — three sampling modes; accent tiles show levels, not captured colors.
 - [Surface and motion refinement](../ui-polish-2026-10-21.md) — current styling work.
 
 ![Runelight Quick tiles proposal](quick-tiles.png)
@@ -17,7 +18,7 @@ Its two preview rings represent desired colors, not hardware telemetry.
 
 A first [native UI slice](../native-ui-increment.md) now implements the Quick
 tiles direction. Its [Thor screenshot](native-quick-tiles.png) shows real native
-controls. Ambient and sound remain unavailable in that internal build.
+controls. A later [top Ambient slice](../ambient-implementation-2026-10-21.md) now enables capture; sound remains unavailable.
 The native layout now supersedes the original mockup's redundant Current look
 tile: sound sits beside Lighting, followed by the effect strip and paired
 Left/Right color-level controls. The global brightness slider has been removed.
@@ -73,7 +74,7 @@ The HTML/image above preserve the earlier proposal.
 | Effect strip | Ambient, Solid, Rainbow, Breathing, Pulse; changes directly |
 | Left / Right tiles | Drag each rounded color tile vertically for that side's brightness; tap to edit color where the effect supports manual colors |
 | Center Speed tile | Same vertical control between Left/Right for animated effects; omitted for Solid |
-| Center Whole screen tile (Ambient) | HomeKit-style toggle for Custom Sampling: On samples throughout both image halves; Off uses edge regions; the entire tile toggles |
+| Center Sampling tile (Ambient) | Tap to cycle Edges, Screen halves and Full screen; three position dots and an explicit Top screen source label |
 | Error feedback | Startup/hardware errors only; hidden during normal operation |
 
 The selected segment is the effect indicator; no separate Current look summary
@@ -81,17 +82,18 @@ is needed. Lighting and sound stay accessible above the fixed configuration.
 
 Effect controls:
 
-- Ambient: capture Top/Bottom, response, and the center **Whole screen** sampling
-  toggle; saturation under Settings initially. The toggle uses the center slot
-  occupied by Speed in animated effects, keeping independent Left/Right levels.
+- Ambient: the current slice captures **Top screen**, with a center **Sampling**
+  tile for Edges / Screen halves / Full screen. It uses the Speed slot and keeps
+  independent Left/Right levels. Bottom and adjustable response remain deferred;
+  there is no saturation/settings panel in this slice.
 - Solid: left/right colors; no animation speed control.
 - Rainbow: speed; no unused manual-color picker in the Android UI.
 - Breathing and Pulse: left/right colors and speed.
 
 All effects retain independent left/right output levels. The two levels start
 from the previous global setting when upgrading. Rainbow's tiles control levels
-while its animation owns the colors. Ambient remains unavailable pending capture
-integration; do not present the manual tile color as a measured Ambient preview.
+while its animation owns the colors. Ambient uses accent brightness tiles;
+do not present their manual color as a measured capture preview.
 
 Color editing replaces the effect strip/configuration area, retaining the header
 and Lighting/sound tiles. Use the embedded native ColorPickerView wheel with a
@@ -110,12 +112,13 @@ two wider color/level tiles. The separate horizontal speed row is removed. Keep
 normal status silent; display actual startup/hardware errors in context. The
 temporary “Ambient capture is being rebuilt” footer has been removed.
 
-Ambient's Whole screen option carries forward the intent of Bifrost's Custom
-Sampling. Define Edges versus Whole screen explicitly; do not inherit the old
-two-pixel default as a purported edge algorithm. Both modes use an aspect-correct
-grid, preserve left/right mapping and true black, and update sampling within the
-existing session without new capture consent. This control is planned for the
-Ambient implementation; Ambient remains unavailable in the current native build.
+Ambient sampling is explicit: Edges processes each outer 12.5% band; Screen halves
+processes each half separately; Full screen derives one representative color for
+both sides. All three are active choices. Colorful-pixel weighting, a saturation
+lift and black-preserving brightness lift avoid a dim, washed-out raw average.
+All use an aspect-correct grid, preserve true black and
+update within the current capture session. Independent side brightness still
+applies in Full screen mode. The old two-pixel sampling path is disconnected.
 
 The prototype still uses a shared generic color/speed context for Rainbow. Correct
 that conditional visibility during Android implementation; the table above is

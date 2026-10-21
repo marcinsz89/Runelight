@@ -49,6 +49,29 @@ class LightingServiceLifecycleTest {
         fail("Expected $expected, actual ${LEDService.runningEffect}, running=${LEDService.isRunning}")
     }
 
+    @Test fun explicitStopRejectsAnAmbientStartQueuedFromOldConsent() {
+        launch().use {
+            try {
+                var ticket = -1L
+                instrumentation.runOnMainSync {
+                    ticket = LEDService.projectionRequests.begin()
+                    stop()
+                }
+                context.startForegroundService(start(LedAnimationType.AMBIENT)
+                    .putExtra(LEDService.EXTRA_CAPTURE_RESULT, android.app.Activity.RESULT_OK)
+                    .putExtra(LEDService.EXTRA_CAPTURE_GRANT, Intent())
+                    .putExtra(LEDService.EXTRA_CAPTURE_TICKET, ticket))
+                Thread.sleep(300)
+                assertFalse(LEDService.isRunning)
+                assertEquals(com.moonbench.bifrost.services.LightingFailure.CAPTURE_LOST, LEDService.state.value?.failure)
+                assertFalse(LightingIntentStore(context).wantedRunning)
+                context.startService(start(LedAnimationType.AMBIENT).setAction(LEDService.ACTION_UPDATE_PARAMS))
+                Thread.sleep(150)
+                assertFalse(LEDService.isRunning)
+            } finally { stop(); awaitMode(null) }
+        }
+    }
+
     @Test fun rapidStopStartAndLateParameterUpdatesRespectTheLastCommand() {
         launch().use {
             try {

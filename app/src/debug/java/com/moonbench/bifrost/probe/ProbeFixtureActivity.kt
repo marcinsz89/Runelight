@@ -22,6 +22,8 @@ class ProbeFixtureActivity : Activity() {
     private var leftColor = Color.RED
     private var rightColor = Color.BLUE
     private var label = "FIXTURE"
+    private var showLabel = true
+    private var darkHudScene = false
     private var track: AudioTrack? = null
     private val main = Handler(Looper.getMainLooper())
     private lateinit var pattern: View
@@ -34,8 +36,14 @@ class ProbeFixtureActivity : Activity() {
             override fun onDraw(canvas: Canvas) {
                 paint.color = leftColor; canvas.drawRect(0f, 0f, width / 2f, height.toFloat(), paint)
                 paint.color = rightColor; canvas.drawRect(width / 2f, 0f, width.toFloat(), height.toFloat(), paint)
+                if (darkHudScene) {
+                    paint.color = Color.WHITE
+                    canvas.drawRect(0f, 0f, width.toFloat(), height * 0.12f, paint)
+                    paint.color = Color.BLACK
+                    canvas.drawRect(0f, height * 0.35f, width.toFloat(), height.toFloat(), paint)
+                }
                 paint.color = Color.WHITE; paint.textSize = 18f
-                canvas.drawText("$label display=${display?.displayId}", 10f, 24f, paint)
+                if (showLabel) canvas.drawText("$label display=${display?.displayId}", 10f, 24f, paint)
             }
         }
         setContentView(pattern)
@@ -54,6 +62,8 @@ class ProbeFixtureActivity : Activity() {
         leftColor = runCatching { Color.parseColor(input.getStringExtra("left") ?: "#ff0000") }.getOrDefault(Color.RED)
         rightColor = runCatching { Color.parseColor(input.getStringExtra("right") ?: "#0000ff") }.getOrDefault(Color.BLUE)
         label = input.getStringExtra("label")?.take(30) ?: "FIXTURE"
+        showLabel = !input.getBooleanExtra("hide_label", false)
+        darkHudScene = input.getBooleanExtra("dark_hud_scene", false)
         pattern.invalidate()
         stopTone()
         if (input.getBooleanExtra("tone", false)) {

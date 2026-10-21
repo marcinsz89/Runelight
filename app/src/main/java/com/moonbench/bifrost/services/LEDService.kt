@@ -1,6 +1,7 @@
 package com.moonbench.bifrost.services
 
 import android.app.Notification
+import android.app.Activity
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -19,6 +20,9 @@ import androidx.lifecycle.MutableLiveData
 import com.moonbench.bifrost.R
 import com.moonbench.bifrost.RunelightActivity
 import com.moonbench.bifrost.animations.*
+import com.moonbench.bifrost.ambient.AmbientSamplingMode
+import com.moonbench.bifrost.ambient.NativeAmbientAnimation
+import com.moonbench.bifrost.ambient.ProjectionConsentGate
 import com.moonbench.bifrost.tools.LedController
 
 /** Owns the retained effects and hardware. UI lifetime and legacy policies have no authority. */
@@ -27,6 +31,11 @@ class LEDService : Service() {
         private const val TAG = "RunelightService"
         private val PLAIN_EFFECTS = setOf(LedAnimationType.STATIC, LedAnimationType.RAINBOW,
             LedAnimationType.BREATH, LedAnimationType.PULSE)
+        internal val projectionRequests = ProjectionConsentGate()
+        const val EXTRA_CAPTURE_GRANT = "runelight.captureGrant"
+        const val EXTRA_CAPTURE_RESULT = "runelight.captureResult"
+        const val EXTRA_CAPTURE_TICKET = "runelight.captureTicket"
+        const val EXTRA_AMBIENT_SAMPLING = "runelight.ambientSampling"
         const val ACTION_START = "io.github.marcinsz89.runelight.START"
         // Compilation compatibility for remaining legacy sources, not accepted runtime commands.
         const val CHANNEL_ID = "LEDServiceChannel"
@@ -85,6 +94,7 @@ class LEDService : Service() {
 
         /** Clears durable intent even if there is no live service instance. */
         fun requestStop(context: Context) {
+            projectionRequests.invalidate()
             LightingIntentStore(context).setWantedRunning(false)
             context.startService(Intent(context, LEDService::class.java).setAction(ACTION_STOP))
         }
@@ -115,6 +125,7 @@ class LEDService : Service() {
         latestStartId = startId
         when (intent?.action) {
             ACTION_STOP -> {
+                projectionRequests.invalidate()
                 intentStore.setWantedRunning(false)
                 // A process may have died while the vendor retained its last frame.
                 // Explicit Stop still attempts black without restarting an effect.
@@ -141,7 +152,7 @@ class LEDService : Service() {
 
     private fun startLighting(intent: Intent) {
         val type = LedAnimationType.fromStoredName(intent.getStringExtra("animationType"))
-        if (type !in PLAIN_EFFECTS) {
+        if (type !in PLAIN_EFFECTS && type != LedAnimationType.AMBIENT) {
             if (!isRunning) {
                 promoteToForeground()
                 ownsSession = true
@@ -150,6 +161,18 @@ class LEDService : Service() {
             return
         }
         type!!
+        val ambient = type == LedAnimationType.AMBIENT
+        val grant = intent.getParcelableExtra(EXTRA_CAPTURE_GRANT, Intent::class.java)
+        if (ambient && (grant == null || intent.getIntExtra(EXTRA_CAPTURE_RESULT, 0) != Activity.RESULT_OK ||
+                !projectionRequests.consume(intent.getLongExtra(EXTRA_CAPTURE_TICKET, -1)))) {
+            if (!isRunning) {
+                promoteToForeground()
+                ownsSession = true
+                cleanupAndStop(failure = LightingFailure.CAPTURE_LOST)
+            }
+            return
+        }
+        if (!ambient) projectionRequests.invalidate()
         stopping = false
         ownsSession = true
         val keepOutput = runtime.state.phase == LightingPhase.RUNNING &&
@@ -157,16 +180,15 @@ class LEDService : Service() {
         val token = runtime.begin(type, keepOutput)
         publishState()
         try {
-            promoteToForeground()
+            cancelStartupTimeout()
+            ledController?.onOutputResult = null
+            currentAnimation?.stopForHandoff()
+            currentAnimation = null
+            promoteToForeground(ambient)
             if (!intentStore.setWantedRunning(true)) {
                 cleanupAndStop(failure = LightingFailure.START_FAILED)
                 return
             }
-            cancelStartupTimeout()
-            // Handoff cancels old timers but keeps the current physical frame.
-            ledController?.onOutputResult = null
-            currentAnimation?.stopForHandoff()
-            currentAnimation = null
             val controller = ledController ?: LedController().also { ledController = it }
             if (!controller.isAvailable) {
                 cleanupAndStop(failure = LightingFailure.OUTPUT_UNAVAILABLE)
@@ -185,7 +207,9 @@ class LEDService : Service() {
                 val result = Runnable {
                     if (runtime.isCurrent(token)) {
                         if (!accepted) cleanupAndStop(failure = LightingFailure.OUTPUT_UNAVAILABLE)
-                        else if (runtime.frameAccepted(token)) {
+                        else if ((type != LedAnimationType.AMBIENT ||
+                                (currentAnimation as? NativeAmbientAnimation)?.hasRenderedFrame == true) &&
+                            runtime.frameAccepted(token)) {
                             cancelStartupTimeout()
                             publishState()
                         }
@@ -194,6 +218,11 @@ class LEDService : Service() {
                 if (Looper.myLooper() == handler.looper) result.run() else handler.post(result)
             }
             val animation = when (type) {
+                LedAnimationType.AMBIENT -> NativeAmbientAnimation(this, controller,
+                    intent.getIntExtra(EXTRA_CAPTURE_RESULT, 0), grant!!,
+                    AmbientSamplingMode.fromStoredName(intent.getStringExtra(EXTRA_AMBIENT_SAMPLING)), onFailure = {
+                    if (runtime.isCurrent(token)) cleanupAndStop(failure = LightingFailure.CAPTURE_LOST)
+                })
                 LedAnimationType.STATIC -> StaticAnimation(controller, currentColor, currentRightColor)
                 LedAnimationType.RAINBOW -> RainbowAnimation(controller)
                 LedAnimationType.BREATH -> BreathAnimation(controller, currentColor, currentRightColor)
@@ -206,7 +235,7 @@ class LEDService : Service() {
             animation.setLerpStrength(currentSmoothness)
             startupTimeout = Runnable {
                 if (runtime.awaitingFrame(token))
-                    cleanupAndStop(failure = LightingFailure.START_FAILED)
+                    cleanupAndStop(failure = if (ambient) LightingFailure.CAPTURE_LOST else LightingFailure.START_FAILED)
             }.also { handler.postDelayed(it, 5000L) }
             animation.start()
         } catch (e: RuntimeException) {
@@ -217,6 +246,9 @@ class LEDService : Service() {
 
     private fun handleUpdateParams(intent: Intent) {
         val animation = currentAnimation ?: return
+        if (intent.hasExtra(EXTRA_AMBIENT_SAMPLING))
+            (animation as? NativeAmbientAnimation)?.setSamplingMode(
+                AmbientSamplingMode.fromStoredName(intent.getStringExtra(EXTRA_AMBIENT_SAMPLING)))
         ledController?.setSideBrightness(
             if (intent.hasExtra(EXTRA_LEFT_BRIGHTNESS_PERCENT)) intent.getIntExtra(EXTRA_LEFT_BRIGHTNESS_PERCENT, 100) else null,
             if (intent.hasExtra(EXTRA_RIGHT_BRIGHTNESS_PERCENT)) intent.getIntExtra(EXTRA_RIGHT_BRIGHTNESS_PERCENT, 100) else null)
@@ -276,10 +308,10 @@ class LEDService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    private fun promoteToForeground() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(NOTIFICATION_ID, createNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
-        } else startForeground(NOTIFICATION_ID, createNotification())
+    private fun promoteToForeground(capturing: Boolean = false) {
+        val type = (if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0) or
+            (if (capturing) ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION else 0)
+        startForeground(NOTIFICATION_ID, createNotification(), type)
     }
 
     private fun createNotification(): Notification {

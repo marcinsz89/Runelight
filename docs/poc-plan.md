@@ -20,9 +20,11 @@ with a light-related rune. See [the saved design](design/README.md).
 POC scope discussed:
 
 - Ambient, Solid, Rainbow, Breathing and Pulse.
-- Ambient Custom Sampling: a center HomeKit-style **Whole screen** toggle,
-  sampling the full image halves when On and edge regions when Off. Preserve
-  independent Left/Right levels; changing sampling must not restart capture.
+- Ambient sampling: a center HomeKit-style **Sampling** tile cycling **Edges**,
+  **Screen halves**, **Full screen**. Edges processes each outer 12.5% band;
+  halves processes each side separately; full screen shares one representative
+  whole-picture color. Favor colorful pixels and lift brightness/saturation while
+  preserving true black. Preserve independent Left/Right levels without restarting capture.
 - An independent **React to sound** option on every effect, with one sensitivity
   control. The effect supplies color/animation; sound modulates intensity.
 - Direct effect/brightness controls, relevant per-effect controls, explicit
@@ -148,6 +150,10 @@ Verify these on plain effects before connecting capture to hardware. Existing
 native UI smoke passes do not satisfy these engine requirements.
 
 ### 3. Implement the top Ambient slice
+
+The [native top-source increment](ambient-implementation-2026-10-21.md) now wires
+ordinary capture consent, three live sampling modes and held-target smoothing.
+Its scoped validation does not complete bottom/audio or long-session acceptance.
 
 Pipeline: selected-source capture → aspect-correct small sample grid → left/right
 color targets → time-based smoothing → optional sound intensity → global

@@ -127,8 +127,7 @@
         <com.google.android.material.button.MaterialButton
             android:id="@+id/effectAmbient" style="@style/RunelightEffect"
             android:text="@string/runelight_ambient"
-            android:enabled="false"
-            android:contentDescription="@string/runelight_ambient_unavailable" />
+            android:contentDescription="@string/runelight_ambient_top" />
         <com.google.android.material.button.MaterialButton
             android:id="@+id/effectSolid" style="@style/RunelightEffect"
             android:text="@string/runelight_solid" />
@@ -170,6 +169,69 @@
                 android:layout_marginStart="6dp"
                 android:layout_marginEnd="6dp"
                 android:contentDescription="@string/runelight_speed" />
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/quickAmbientSampling"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:layout_marginEnd="6dp"
+                android:visibility="gone"
+                android:clickable="true"
+                android:focusable="true"
+                android:stateListAnimator="@animator/runelight_tile_press"
+                style="@style/RunelightCard">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:padding="14dp"
+                    android:background="@drawable/runelight_toggle_surface">
+                    <TextView
+                        style="@style/RunelightLabel"
+                        android:layout_width="match_parent"
+                        android:gravity="center"
+                        android:textStyle="bold"
+                        android:textColor="@color/runelight_toggle_text"
+                        android:text="@string/runelight_sampling" />
+                    <TextView
+                        android:id="@+id/quickAmbientSamplingState"
+                        style="@style/RunelightLabel"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:textSize="24sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/runelight_toggle_text"
+                        android:text="@string/runelight_sampling_edges" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="12dp"
+                        android:layout_marginBottom="12dp"
+                        android:gravity="center"
+                        android:importantForAccessibility="noHideDescendants"
+                        android:orientation="horizontal">
+                        <View android:id="@+id/samplingEdgeDot"
+                            android:layout_width="6dp" android:layout_height="6dp"
+                            android:layout_marginHorizontal="3dp" android:background="@drawable/runelight_sampling_dot" />
+                        <View android:id="@+id/samplingHalvesDot"
+                            android:layout_width="6dp" android:layout_height="6dp"
+                            android:layout_marginHorizontal="3dp" android:background="@drawable/runelight_sampling_dot" />
+                        <View android:id="@+id/samplingFullDot"
+                            android:layout_width="6dp" android:layout_height="6dp"
+                            android:layout_marginHorizontal="3dp" android:background="@drawable/runelight_sampling_dot" />
+                    </LinearLayout>
+                    <TextView
+                        style="@style/RunelightLabel"
+                        android:layout_width="match_parent"
+                        android:gravity="center"
+                        android:textSize="11sp"
+                        android:textColor="@color/runelight_toggle_text"
+                        android:text="@string/runelight_top_screen" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
             <com.moonbench.bifrost.ui.ColorLevelTile
                 android:id="@+id/quickRightColor"
                 android:layout_width="0dp"

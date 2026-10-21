@@ -56,6 +56,25 @@ class RunelightActivityTest {
     }
 
     @Test
+    fun ambientSamplingSurvivesRecreationWithoutStartingOrRequestingCapture() {
+        launchOnActiveDisplay().use { scenario ->
+            scenario.onActivity {
+                it.findViewById<MaterialButton>(R.id.effectAmbient).performClick()
+                assertTrue("Edges is an active sampling mode", it.findViewById<View>(R.id.quickAmbientSampling).isActivated)
+                it.findViewById<View>(R.id.quickAmbientSampling).performClick()
+            }
+            scenario.recreate()
+            scenario.onActivity {
+                assertEquals("Screen halves", it.findViewById<android.widget.TextView>(R.id.quickAmbientSamplingState).text.toString())
+                assertEquals(View.GONE, it.findViewById<View>(R.id.quickSpeed).visibility)
+                assertEquals(View.VISIBLE, it.findViewById<View>(R.id.quickAmbientSampling).visibility)
+            }
+            assertEquals("AMBIENT", context.getSharedPreferences("runelight_controls", Context.MODE_PRIVATE).getString("effect", null))
+            assertFalse(LEDService.isRunning)
+        }
+    }
+
+    @Test
     fun selectingEffectAndRecreatingDoesNotStartLighting() {
         launchOnActiveDisplay().use { scenario ->
             // Espresso 3.5's click injection targets display 0 on this firmware.

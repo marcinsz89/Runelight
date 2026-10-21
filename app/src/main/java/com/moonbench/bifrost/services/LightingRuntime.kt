@@ -3,7 +3,7 @@ package com.moonbench.bifrost.services
 import com.moonbench.bifrost.animations.LedAnimationType
 
 enum class LightingPhase { STOPPED, STARTING, RUNNING, FAILED }
-enum class LightingFailure { OUTPUT_UNAVAILABLE, START_FAILED }
+enum class LightingFailure { OUTPUT_UNAVAILABLE, START_FAILED, CAPTURE_LOST }
 
 /** Runtime observations only. Never persisted or interpreted as permission to start. */
 data class LightingState(

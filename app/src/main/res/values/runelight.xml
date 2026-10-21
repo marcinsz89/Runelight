@@ -116,7 +116,6 @@
     <string name="runelight_percent">%1$d%%</string>
     <string name="runelight_sound">React to sound</string>
     <string name="runelight_sound_unavailable">React to sound. Not available in this build.</string>
-    <string name="runelight_ambient_unavailable">Ambient. Not available in this build.</string>
     <string name="runelight_appearance">Switch light or dark appearance</string>
     <string name="runelight_appearance_symbol">◐</string>
     <string name="runelight_left_color">Left color</string>
@@ -126,4 +125,12 @@
     <string name="runelight_speed">Speed</string>
     <string name="runelight_notification_title">Lighting is active</string>
     <string name="runelight_notification_body">Tap to open Runelight</string>
+    <string name="runelight_sampling">Sampling</string>
+    <string name="runelight_sampling_edges">Edges</string>
+    <string name="runelight_sampling_halves">Screen halves</string>
+    <string name="runelight_sampling_full">Full screen</string>
+    <string name="runelight_top_screen">Top screen</string>
+    <string name="runelight_ambient_top">Ambient from the top screen</string>
+    <string name="runelight_sampling_description">Sampling: %1$s. Top screen. Tap to cycle Edges, Screen halves and Full screen.</string>
+    <string name="runelight_capture_lost">Capture stopped. Tap Start to reconnect.</string>
 </resources>

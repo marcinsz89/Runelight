@@ -1,5 +1,6 @@
 package com.moonbench.bifrost
 
+import android.app.Activity
 import android.Manifest
 import android.animation.ValueAnimator
 import android.content.Intent
@@ -7,6 +8,9 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.StateListDrawable
+import android.media.projection.MediaProjectionConfig
+import android.media.projection.MediaProjectionManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -23,6 +27,7 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.card.MaterialCardView
 import com.moonbench.bifrost.animations.LedAnimationType
+import com.moonbench.bifrost.ambient.AmbientSamplingMode
 import com.moonbench.bifrost.services.LEDService
 import com.moonbench.bifrost.services.LightingPhase
 import com.moonbench.bifrost.services.LightingFailure
@@ -33,7 +38,7 @@ import com.skydoves.colorpickerview.ColorPickerView
 import com.skydoves.colorpickerview.listeners.ColorEnvelopeListener
 import kotlin.math.roundToInt
 
-/** First native Quick tiles increment. Capture and sound await their own engine work. */
+/** Native Quick tiles; the service owns lighting and authorized capture. */
 class RunelightActivity : AppCompatActivity() {
     private val prefs by lazy { getSharedPreferences("runelight_controls", MODE_PRIVATE) }
     private val handler = Handler(Looper.getMainLooper())
@@ -60,11 +65,35 @@ class RunelightActivity : AppCompatActivity() {
         }
     }
     private var pendingNotificationStart = false
+    private var captureTicket = -1L
+    private var ambientSampling = AmbientSamplingMode.EDGES
+    private val waitingForCapture: Boolean get() = LEDService.projectionRequests.isPending(captureTicket)
+
+    private val captureConsent = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (waitingForCapture && effect == LedAnimationType.AMBIENT) {
+            if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+                startLighting(result.resultCode, result.data)
+            } else {
+                LEDService.projectionRequests.cancel(captureTicket)
+                captureTicket = -1L
+                // Cancellation keeps a previously running plain effect usable.
+                LEDService.runningEffect?.takeIf { it != LedAnimationType.AMBIENT }?.let { previous ->
+                    effect = previous
+                    findViewById<MaterialButtonToggleGroup>(R.id.effectButtons)
+                        .check(effects.entries.first { it.value == previous }.key)
+                    saveControls()
+                    renderControls()
+                }
+                renderRuntime()
+            }
+        }
+    }
     private var startingAt = 0L
     private var startError = false
     private var runtimeRendered = false
 
     private val effects = linkedMapOf(
+        R.id.effectAmbient to LedAnimationType.AMBIENT,
         R.id.effectSolid to LedAnimationType.STATIC,
         R.id.effectRainbow to LedAnimationType.RAINBOW,
         R.id.effectBreathing to LedAnimationType.BREATH,
@@ -106,6 +135,9 @@ class RunelightActivity : AppCompatActivity() {
         val previousBrightness = prefs.getInt("brightness", 40)
         leftBrightness = prefs.getInt("leftBrightness", previousBrightness).coerceIn(0, 100)
         rightBrightness = prefs.getInt("rightBrightness", previousBrightness).coerceIn(0, 100)
+        ambientSampling = AmbientSamplingMode.fromStoredName(prefs.getString("ambientSampling", null)
+            ?: if (prefs.getBoolean("wholeScreen", false)) "HALVES" else "EDGES")
+        captureTicket = savedInstanceState?.getLong("captureTicket", -1L) ?: -1L
         speed = prefs.getInt("speed", 50).coerceIn(0, 100)
         leftColor = prefs.getInt("leftColor", leftColor)
         rightColor = prefs.getInt("rightColor", rightColor)
@@ -131,7 +163,7 @@ class RunelightActivity : AppCompatActivity() {
         speedTile.color = ContextCompat.getColor(this, R.color.runelight_accent)
 
         lightingTile.setOnClickListener {
-            if (LEDService.isRunning || pendingNotificationStart || startingAt != 0L) {
+            if (LEDService.isRunning || pendingNotificationStart || waitingForCapture || startingAt != 0L) {
                 previewSuppressed = true
                 clearColorPreview(restore = false)
                 pendingNotificationStart = false
@@ -158,17 +190,13 @@ class RunelightActivity : AppCompatActivity() {
         }
 
         val group = findViewById<MaterialButtonToggleGroup>(R.id.effectButtons)
-        // ToggleGroup applies its enabled state when adding children, so disable
-        // unavailable capture after inflation as well as in the XML.
-        findViewById<MaterialButton>(R.id.effectAmbient).apply {
-            isEnabled = false
-            alpha = 0.45f
-        }
         group.check(effects.entries.first { it.value == effect }.key)
         group.addOnButtonCheckedListener { _, checkedId, checked ->
             val next = effects[checkedId]
             if (next != null) effectMotion.select(findViewById(checkedId))
             if (checked && next != null && next != effect) {
+                LEDService.projectionRequests.cancel(captureTicket)
+                captureTicket = -1L
                 effect = next
                 editingRight = null
                 findViewById<View>(R.id.quickColorEditor).visibility = View.GONE
@@ -176,6 +204,12 @@ class RunelightActivity : AppCompatActivity() {
                 renderControls()
                 if (LEDService.isRunning) startLighting()
             }
+        }
+        findViewById<View>(R.id.quickAmbientSampling).setOnClickListener {
+            ambientSampling = ambientSampling.next()
+            saveControls()
+            renderControls()
+            updateParameters()
         }
         leftLevelTile.level = leftBrightness
         rightLevelTile.level = rightBrightness
@@ -262,6 +296,7 @@ class RunelightActivity : AppCompatActivity() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
+        outState.putLong("captureTicket", captureTicket)
         outState.putBoolean("notificationStart", pendingNotificationStart)
         outState.putLong("startingAt", startingAt)
         outState.putBoolean("editingColor", editingRight != null)
@@ -276,11 +311,14 @@ class RunelightActivity : AppCompatActivity() {
         clearColorPreview(restore = false)
         previewAnimator?.cancel()
         handler.removeCallbacks(startTimeout)
+        if (isFinishing) LEDService.projectionRequests.cancel(captureTicket)
         super.onDestroy()
     }
 
     private fun saveControls() {
         prefs.edit {
+            putString("ambientSampling", ambientSampling.name)
+            remove("wholeScreen")
             putString("effect", effect.name)
             putInt("leftBrightness", leftBrightness)
             putInt("rightBrightness", rightBrightness)
@@ -290,7 +328,29 @@ class RunelightActivity : AppCompatActivity() {
         }
     }
 
-    private fun startLighting() {
+    private fun startLighting(resultCode: Int = 0, grant: Intent? = null) {
+        if (effect == LedAnimationType.AMBIENT && grant == null) {
+            if (LEDService.runningEffect == LedAnimationType.AMBIENT) {
+                updateParameters()
+                return
+            }
+            if (waitingForCapture) return
+            captureTicket = LEDService.projectionRequests.begin()
+            startError = false
+            renderRuntime()
+            try {
+                val manager = getSystemService(MediaProjectionManager::class.java)
+                val request = if (Build.VERSION.SDK_INT >= 34)
+                    manager.createScreenCaptureIntent(MediaProjectionConfig.createConfigForDefaultDisplay())
+                else manager.createScreenCaptureIntent()
+                captureConsent.launch(request)
+            } catch (_: RuntimeException) {
+                LEDService.projectionRequests.cancel(captureTicket)
+                startError = true
+                renderRuntime()
+            }
+            return
+        }
         previewSuppressed = false
         startingAt = SystemClock.elapsedRealtime()
         startError = false
@@ -298,6 +358,11 @@ class RunelightActivity : AppCompatActivity() {
             ContextCompat.startForegroundService(this, parameterIntent().apply {
                 action = LEDService.ACTION_START
                 putExtra("animationType", effect.name)
+                if (grant != null) {
+                    putExtra(LEDService.EXTRA_CAPTURE_GRANT, grant)
+                    putExtra(LEDService.EXTRA_CAPTURE_RESULT, resultCode)
+                    putExtra(LEDService.EXTRA_CAPTURE_TICKET, captureTicket)
+                }
             })
             handler.removeCallbacks(startTimeout)
             handler.postDelayed(startTimeout, 5001L)
@@ -309,6 +374,7 @@ class RunelightActivity : AppCompatActivity() {
     }
 
     private fun parameterIntent() = Intent(this, LEDService::class.java).apply {
+        putExtra(LEDService.EXTRA_AMBIENT_SAMPLING, ambientSampling.name)
         putExtra("animationColor", leftColor)
         putExtra("animationRightColor", rightColor)
         putExtra("brightness", 255)
@@ -395,12 +461,28 @@ class RunelightActivity : AppCompatActivity() {
 
     private fun renderControls() {
         renderEditorVisibility()
-        speedTile.visibility = if (effect.supportsSpeed) View.VISIBLE else View.GONE
+        val ambient = effect == LedAnimationType.AMBIENT
+        speedTile.visibility = if (effect.supportsSpeed && !ambient) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.quickAmbientSampling).apply {
+            visibility = if (ambient) View.VISIBLE else View.GONE
+            isActivated = true
+            contentDescription = getString(R.string.runelight_sampling_description, samplingLabel())
+        }
+        findViewById<TextView>(R.id.quickAmbientSamplingState).text = samplingLabel()
+        listOf(R.id.samplingEdgeDot, R.id.samplingHalvesDot, R.id.samplingFullDot).forEachIndexed { index, id ->
+            findViewById<View>(id).alpha = if (index == ambientSampling.ordinal) 1f else 0.25f
+        }
         leftLevelTile.colorEditable = effect.needsColorSelection
         rightLevelTile.colorEditable = effect.needsColorSelection
         leftLevelTile.color = if (effect.needsColorSelection) leftColor else ContextCompat.getColor(this, R.color.runelight_accent)
         rightLevelTile.color = if (effect.needsColorSelection) rightColor else ContextCompat.getColor(this, R.color.runelight_accent)
     }
+
+    private fun samplingLabel() = getString(when (ambientSampling) {
+        AmbientSamplingMode.EDGES -> R.string.runelight_sampling_edges
+        AmbientSamplingMode.HALVES -> R.string.runelight_sampling_halves
+        AmbientSamplingMode.FULL_SCREEN -> R.string.runelight_sampling_full
+    })
 
     private fun renderRuntime() {
         val runtime = LEDService.state.value
@@ -426,7 +508,7 @@ class RunelightActivity : AppCompatActivity() {
             startingAt = 0L
             startError = true
         }
-        val starting = pendingNotificationStart || startingAt != 0L || (LEDService.isRunning && !active)
+        val starting = pendingNotificationStart || waitingForCapture || startingAt != 0L || (LEDService.isRunning && !active)
         lightingState.setText(when {
             active -> R.string.runelight_on
             starting -> R.string.runelight_starting
@@ -436,6 +518,7 @@ class RunelightActivity : AppCompatActivity() {
         lightingTile.contentDescription = getString(if (canStop) R.string.runelight_stop else R.string.runelight_start)
         val error = when {
             runtime?.failure == LightingFailure.OUTPUT_UNAVAILABLE -> R.string.runelight_output_unavailable
+            runtime?.failure == LightingFailure.CAPTURE_LOST -> R.string.runelight_capture_lost
             runtime?.failure == LightingFailure.START_FAILED || startError -> R.string.runelight_start_failed
             runtime?.phase == LightingPhase.STOPPED && !starting && LightingIntentStore(this).wantedRunning -> R.string.runelight_interrupted
             else -> null
