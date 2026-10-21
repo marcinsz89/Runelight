@@ -36,6 +36,13 @@ scoped top-source/color and retained-session checks plus sampling/driver regress
 It does not pass bottom/audio, actual capture-specific Pathfinder, system
 revocation or long-game acceptance. The historical baseline table remains below.
 
+The later [sound increment](sound-implementation-2026-10-21.md) adds physical
+quiet/loud/silent playback with Ambient, saved-On pause for Breathing/Pulse,
+automatic recorder resume on supported modes and video-lease reuse. These are
+scoped passes, not full D14–D17 or long-game acceptance. The owner reported one
+stuck-white output after idle OLED cleanup and then a cleanup that recovered
+normally; repeated cleanup/recovery remains open under D09/D12.
+
 The [ownership/handoff increment](service-ownership-2026-10-21.md) adds scoped
 passes for closed-driver fencing, Solid timer idle, rapid Stop/Start, UI task
 removal and plain-effect handoff. Lower-screen Home/sleep/wake unexpectedly
@@ -78,7 +85,7 @@ Keep the exact release mapping with the tested APK. Stop other LED controllers.
 | D12 | Constant frame, adjust brightness/response | Settles to target even with unchanged frames | NOT RUN |
 | D13 | Letterbox/pillarbox, custom+single sampling | Grid still used; useful content sampled correctly | NOT RUN |
 | D14 | Stop/revoke capture, another recorder, permission denied | Clear state; output policy applied; fresh consent when needed | NOT RUN |
-| D15 | Each of five effects, sound toggled on/off | Same effect/colors/source; optional intensity reaction only | NOT RUN |
+| D15 | Supported effects with sound on/off; Breathing/Pulse pause saved On | Same effect/colors/source; optional intensity reaction only | NOT RUN in inherited baseline; scoped native sound results above |
 | D16 | Silence, unsupported playback, recorder/read failure | No retry spin/leak/mic fallback; honest sound state | NOT RUN |
 | D17 | Rapid effect/source/sound switches, then Stop | Old callbacks cannot relight or replace the new session | NOT RUN |
 | D18 | App/process loss and explicit Force Stop, separately | Record policy; no false always-running/restart guarantee | NOT RUN |

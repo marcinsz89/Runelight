@@ -1,5 +1,7 @@
 package com.moonbench.bifrost.services
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.app.Notification
 import android.app.Activity
 import android.app.NotificationChannel
@@ -23,6 +25,8 @@ import com.moonbench.bifrost.animations.*
 import com.moonbench.bifrost.ambient.AmbientSamplingMode
 import com.moonbench.bifrost.ambient.NativeAmbientAnimation
 import com.moonbench.bifrost.ambient.ProjectionConsentGate
+import com.moonbench.bifrost.ambient.TopScreenCapture
+import com.moonbench.bifrost.audio.*
 import com.moonbench.bifrost.tools.LedController
 
 /** Owns the retained effects and hardware. UI lifetime and legacy policies have no authority. */
@@ -35,6 +39,7 @@ class LEDService : Service() {
         const val EXTRA_CAPTURE_GRANT = "runelight.captureGrant"
         const val EXTRA_CAPTURE_RESULT = "runelight.captureResult"
         const val EXTRA_CAPTURE_TICKET = "runelight.captureTicket"
+        const val EXTRA_SOUND_ENABLED = "runelight.soundEnabled"
         const val EXTRA_AMBIENT_SAMPLING = "runelight.ambientSampling"
         const val ACTION_START = "io.github.marcinsz89.runelight.START"
         // Compilation compatibility for remaining legacy sources, not accepted runtime commands.
@@ -80,6 +85,9 @@ class LEDService : Service() {
         const val PREF_AMBILIGHT_USE_MEDIA_PROJECTION = "ambilight_use_media_projection"
         const val DEFAULT_AMBILIGHT_USE_MEDIA_PROJECTION = true
 
+        private val mutableSound = MutableLiveData(SoundState())
+        val soundState: LiveData<SoundState> get() = mutableSound
+        val hasCaptureSession: Boolean get() = mutableSound.value?.captureAvailable == true
         private val mutableState = MutableLiveData(LightingState())
         val state: LiveData<LightingState> get() = mutableState
         val isRunning: Boolean get() = mutableState.value?.phase in
@@ -114,6 +122,14 @@ class LEDService : Service() {
     private var stopping = false
     private var ownsSession = false
     private var startupTimeout: Runnable? = null
+    private var selectedEffect: LedAnimationType? = null
+    private var capture: TopScreenCapture? = null
+    private var captureEpoch = 0L
+    private var audio: PlaybackAudioCapture? = null
+    private var audioEpoch = 0L
+    private var soundWanted = false
+    private var soundPhase = SoundPhase.OFF
+    private var audioFailed = false
 
     override fun onCreate() {
         super.onCreate()
@@ -162,9 +178,7 @@ class LEDService : Service() {
         }
         type!!
         val ambient = type == LedAnimationType.AMBIENT
-        val grant = intent.getParcelableExtra(EXTRA_CAPTURE_GRANT, Intent::class.java)
-        if (ambient && (grant == null || intent.getIntExtra(EXTRA_CAPTURE_RESULT, 0) != Activity.RESULT_OK ||
-                !projectionRequests.consume(intent.getLongExtra(EXTRA_CAPTURE_TICKET, -1)))) {
+        if (ambient && capture == null && !intent.hasExtra(EXTRA_CAPTURE_GRANT)) {
             if (!isRunning) {
                 promoteToForeground()
                 ownsSession = true
@@ -172,11 +186,20 @@ class LEDService : Service() {
             }
             return
         }
-        if (!ambient) projectionRequests.invalidate()
+        // Only fresh, pending consent may create a session. Never replay grants.
+        if (intent.hasExtra(EXTRA_CAPTURE_GRANT) &&
+            !projectionRequests.consume(intent.getLongExtra(EXTRA_CAPTURE_TICKET, -1))) {
+            if (!isRunning) { promoteToForeground(); ownsSession = true; cleanupAndStop(failure = LightingFailure.CAPTURE_LOST) }
+            return
+        }
+        if (!intent.hasExtra(EXTRA_CAPTURE_GRANT)) projectionRequests.invalidate()
         stopping = false
         ownsSession = true
         val keepOutput = runtime.state.phase == LightingPhase.RUNNING &&
             currentAnimation != null && ledController?.isAvailable == true
+        selectedEffect = type
+        soundWanted = intent.getBooleanExtra(EXTRA_SOUND_ENABLED, soundWanted)
+        audioFailed = false
         val token = runtime.begin(type, keepOutput)
         publishState()
         try {
@@ -184,7 +207,13 @@ class LEDService : Service() {
             ledController?.onOutputResult = null
             currentAnimation?.stopForHandoff()
             currentAnimation = null
-            promoteToForeground(ambient)
+            promoteToForeground(capture != null || intent.hasExtra(EXTRA_CAPTURE_GRANT))
+            if (capture == null && intent.hasExtra(EXTRA_CAPTURE_GRANT)) acquireCapture(intent)
+            if (!runtime.isCurrent(token)) return
+            if (ambient && capture?.mediaProjection == null) {
+                cleanupAndStop(failure = LightingFailure.CAPTURE_LOST)
+                return
+            }
             if (!intentStore.setWantedRunning(true)) {
                 cleanupAndStop(failure = LightingFailure.START_FAILED)
                 return
@@ -219,10 +248,10 @@ class LEDService : Service() {
             }
             val animation = when (type) {
                 LedAnimationType.AMBIENT -> NativeAmbientAnimation(this, controller,
-                    intent.getIntExtra(EXTRA_CAPTURE_RESULT, 0), grant!!,
+                    0, Intent(),
                     AmbientSamplingMode.fromStoredName(intent.getStringExtra(EXTRA_AMBIENT_SAMPLING)), onFailure = {
                     if (runtime.isCurrent(token)) cleanupAndStop(failure = LightingFailure.CAPTURE_LOST)
-                })
+                }, captureFactory = { frame, _ -> checkNotNull(capture).videoLease(frame) })
                 LedAnimationType.STATIC -> StaticAnimation(controller, currentColor, currentRightColor)
                 LedAnimationType.RAINBOW -> RainbowAnimation(controller)
                 LedAnimationType.BREATH -> BreathAnimation(controller, currentColor, currentRightColor)
@@ -238,6 +267,7 @@ class LEDService : Service() {
                     cleanupAndStop(failure = if (ambient) LightingFailure.CAPTURE_LOST else LightingFailure.START_FAILED)
             }.also { handler.postDelayed(it, 5000L) }
             animation.start()
+            if (runtime.isCurrent(token)) syncSound()
         } catch (e: RuntimeException) {
             Log.e(TAG, "Lighting start failed", e)
             cleanupAndStop(failure = LightingFailure.START_FAILED)
@@ -246,6 +276,20 @@ class LEDService : Service() {
 
     private fun handleUpdateParams(intent: Intent) {
         val animation = currentAnimation ?: return
+        if (intent.hasExtra(EXTRA_SOUND_ENABLED)) {
+            val next = intent.getBooleanExtra(EXTRA_SOUND_ENABLED, soundWanted)
+            if (next != soundWanted) audioFailed = false
+            soundWanted = next
+        }
+        if (intent.hasExtra(EXTRA_CAPTURE_GRANT)) {
+            if (!projectionRequests.consume(intent.getLongExtra(EXTRA_CAPTURE_TICKET, -1))) return
+            audioFailed = false
+            if (capture == null) {
+                try { promoteToForeground(true); acquireCapture(intent) }
+                catch (_: RuntimeException) { releaseCapture(); soundPhase = SoundPhase.NEEDS_CONSENT; publishSound() }
+            }
+            if (stopping) return
+        }
         if (intent.hasExtra(EXTRA_AMBIENT_SAMPLING))
             (animation as? NativeAmbientAnimation)?.setSamplingMode(
                 AmbientSamplingMode.fromStoredName(intent.getStringExtra(EXTRA_AMBIENT_SAMPLING)))
@@ -272,6 +316,81 @@ class LEDService : Service() {
             currentSmoothness = intent.getFloatExtra("smoothness", currentSmoothness).coerceIn(0f, 1f)
             animation.setLerpStrength(currentSmoothness)
         }
+        syncSound()
+    }
+
+    private fun acquireCapture(intent: Intent) {
+        val grant = intent.getParcelableExtra(EXTRA_CAPTURE_GRANT, Intent::class.java) ?: return
+        if (intent.getIntExtra(EXTRA_CAPTURE_RESULT, 0) != Activity.RESULT_OK) return
+        val epoch = ++captureEpoch
+        val session = TopScreenCapture(this, handler, { _, _, _ -> }, {
+            if (epoch == captureEpoch) {
+                if (selectedEffect == LedAnimationType.AMBIENT) cleanupAndStop(failure = LightingFailure.CAPTURE_LOST)
+                else { releaseCapture(); soundPhase = SoundPhase.NEEDS_CONSENT; publishSound() }
+            }
+        })
+        capture = session
+        session.acquire(Activity.RESULT_OK, grant)
+        publishSound()
+    }
+
+    private fun stopAudio() {
+        audioEpoch++
+        audio?.close(); audio = null
+        ledController?.setMasterScale(1f)
+    }
+
+    private fun releaseCapture() {
+        captureEpoch++
+        stopAudio()
+        val old = capture
+        capture = null
+        old?.close()
+        if (!stopping && isRunning) promoteToForeground(false)
+    }
+
+    private fun syncSound() {
+        if (stopping || currentAnimation == null) return
+        when {
+            !soundWanted -> {
+                stopAudio()
+                soundPhase = SoundPhase.OFF
+                if (selectedEffect != LedAnimationType.AMBIENT) releaseCapture()
+            }
+            !SoundPolicy.supports(selectedEffect) -> { stopAudio(); soundPhase = SoundPhase.PAUSED }
+            checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED -> {
+                stopAudio(); soundPhase = SoundPhase.NEEDS_PERMISSION
+            }
+            capture?.mediaProjection == null -> { stopAudio(); soundPhase = SoundPhase.NEEDS_CONSENT }
+            audioFailed -> { soundPhase = SoundPhase.FAILED }
+            audio == null -> {
+                val projection = capture?.mediaProjection ?: return
+                val epoch = ++audioEpoch
+                ledController?.setMasterScale(0f)
+                if (stopping || capture?.mediaProjection !== projection) return
+                val recorder = PlaybackAudioCapture(this, projection, handler, { level ->
+                    if (epoch == audioEpoch && !stopping) ledController?.setMasterScale(level)
+                }, { phase ->
+                    if (epoch == audioEpoch && !stopping) {
+                        soundPhase = phase
+                        if (phase == SoundPhase.FAILED) {
+                            audio = null
+                            audioFailed = true
+                            ledController?.setMasterScale(1f)
+                        }
+                        publishSound()
+                    }
+                })
+                audio = recorder
+                recorder.start()
+            }
+        }
+        publishSound()
+    }
+
+    private fun publishSound() {
+        val state = SoundState(soundPhase, capture?.mediaProjection != null)
+        if (mutableSound.value != state) mutableSound.value = state
     }
 
     private fun publishState() {
@@ -295,6 +414,10 @@ class LEDService : Service() {
         runCatching { controller?.shutdown() }.onFailure { Log.w(TAG, "LED shutdown failed", it) }
         runCatching { currentAnimation?.stop() }.onFailure { Log.w(TAG, "Effect teardown failed", it) }
         currentAnimation = null
+        releaseCapture()
+        soundPhase = SoundPhase.OFF
+        publishSound()
+        selectedEffect = null
         stopForeground(STOP_FOREGROUND_REMOVE)
         if (stopService) stopSelf(latestStartId)
     }

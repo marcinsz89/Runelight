@@ -108,10 +108,38 @@ the Thor targets display 0, so the lifecycle tests invoke real control callbacks
 on the Activity thread. Separately verify touch input using explicit display IDs;
 do not interpret callback tests as physical input coverage.
 
-Known full-lint errors:
+## Retained test and diagnostic tools
 
-- Two `MissingPermission` diagnostics at `tools/AudioAnalyzer.kt:55`, including
-  absent `RECORD_AUDIO` and missing runtime permission handling (review R6).
+Keep behavior regressions under `src/test` and `src/androidTest`: they protect
+capture/recorder ownership, Stop, four-zone output and the latency fixes. They do
+not ship in the normal debug or release app. The separate test APK contains the
+bounded `TonePlaybackFixtureActivity`, including a changing-picture/beat mode.
+Capture capability tools under `src/debug` remain useful for bottom-source and
+interruption acceptance. They have no native-controls route and are excluded from
+release; release manifest, R8 mapping and DEX were checked on 2026-10-21.
+
+`VendorOutputTimingProbeTest` is a manual hardware benchmark, skipped in ordinary
+runs. Explicitly Stop lighting before running it; it temporarily writes modest
+test colors and finishes with black. To repeat the paced-writer load check:
+
+```sh
+"$ADB" -s "$THOR_SERIAL" shell am instrument -w -r \
+  -e runelightVendorTiming true \
+  -e class com.moonbench.bifrost.VendorOutputTimingProbeTest#measurePacedProductionWriterUnderCombinedLoad \
+  io.github.marcinsz89.runelight.debug.test/androidx.test.runner.AndroidJUnitRunner
+```
+
+The aggregate result is the target app's `files/paced-output-timing.json` (read
+with `run-as`). The separate ordered one-way benchmark records its temporary
+marker paths in `files/vendor-output-timing.json`; collect those timestamps and
+remove only the listed markers after completion. Keep all collected evidence,
+APK copies and vendor binaries under ignored `local-test-results/`.
+
+## Known full-lint errors
+
+- `MissingPermission` at the inherited `tools/AudioAnalyzer.kt:55`: missing
+  runtime permission handling (review R6). The native playback path checks and
+  handles permission loss separately; `RECORD_AUDIO` is now declared.
 - `StartActivityAndCollapseDeprecated` at `services/BifrostTileService.kt:52`.
   The old overload is guarded below API 34. Evaluate this specific compatibility
   diagnostic or retire the tile with its subsystem; do not assume a Thor crash.

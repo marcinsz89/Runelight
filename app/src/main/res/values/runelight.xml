@@ -133,4 +133,10 @@
     <string name="runelight_ambient_top">Ambient from the top screen</string>
     <string name="runelight_sampling_description">Sampling: %1$s. Top screen. Tap to cycle Edges, Screen halves and Full screen.</string>
     <string name="runelight_capture_lost">Capture stopped. Tap Start to reconnect.</string>
+    <string name="runelight_paused">Paused</string>
+    <string name="runelight_sound_paused_description">Sound %1$s, paused for Breathing and Pulse. Your preference is kept.</string>
+    <string name="runelight_sound_toggle_description">Sound %1$s. Tap to toggle playback reaction.</string>
+    <string name="runelight_sound_permission">Sound needs audio permission. Tap here to allow playback capture.</string>
+    <string name="runelight_sound_consent">Sound needs capture consent. Tap here to reconnect.</string>
+    <string name="runelight_sound_failed">Sound capture stopped. Toggle sound off/on to retry. Lighting continues.</string>
 </resources>

@@ -69,12 +69,12 @@ internal class NativeAmbientAnimation(
     private fun updateTarget() {
         val frame = pixels ?: return
         smoother.target(AmbientSampling.sample(frame, width, height, samplingMode), SystemClock.elapsedRealtime())
-        schedule()
+        if (!smoother.settled || !hasRenderedFrame) schedule()
     }
 
     private fun schedule() {
         if (!active || scheduled) return
         scheduled = true
-        handler.postDelayed(render, 33)
+        handler.postDelayed(render, 16)
     }
 }

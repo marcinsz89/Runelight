@@ -56,6 +56,30 @@ class RunelightActivityTest {
     }
 
     @Test
+    fun soundPreferenceStaysOnWhileBreathingAndPulseDisableTheTile() {
+        val prefs = context.getSharedPreferences("runelight_controls", Context.MODE_PRIVATE)
+        prefs.edit().putBoolean("soundEnabled", true).commit()
+        launchOnActiveDisplay().use { scenario ->
+            for (id in listOf(R.id.effectBreathing, R.id.effectPulse)) {
+                scenario.onActivity {
+                    it.findViewById<MaterialButton>(id).performClick()
+                    assertFalse(it.findViewById<View>(R.id.soundTile).isEnabled)
+                    assertEquals("On", it.findViewById<android.widget.TextView>(R.id.soundState).text.toString())
+                    assertTrue(prefs.getBoolean("soundEnabled", false))
+                }
+            }
+            scenario.recreate()
+            scenario.onActivity {
+                assertFalse(it.findViewById<View>(R.id.soundTile).isEnabled)
+                it.findViewById<MaterialButton>(R.id.effectRainbow).performClick()
+            }
+            scenario.onActivity { assertTrue(it.findViewById<View>(R.id.soundTile).isEnabled) }
+            assertTrue(prefs.getBoolean("soundEnabled", false))
+            assertFalse(LEDService.isRunning)
+        }
+    }
+
+    @Test
     fun ambientSamplingSurvivesRecreationWithoutStartingOrRequestingCapture() {
         launchOnActiveDisplay().use { scenario ->
             scenario.onActivity {

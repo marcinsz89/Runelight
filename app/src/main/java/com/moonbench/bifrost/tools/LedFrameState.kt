@@ -33,9 +33,9 @@ internal class LedFrameState {
 
     data class Submission(val command: String, val colors: List<Color?>)
 
-    fun pending(): Submission? {
+    fun snapshot(): Submission? {
         val colors = finalColors()
-        if (colors.indices.all { colors[it] == submitted[it] }) return null
+        if (colors.all { it == null }) return null
         val commands = colors.mapIndexedNotNull { zone, color ->
             color?.let {
                 val side = if (zone < 2) "l" else "r"
@@ -44,6 +44,10 @@ internal class LedFrameState {
             }
         }
         return Submission(commands.joinToString(" && "), colors)
+    }
+
+    fun pending(): Submission? = snapshot()?.takeUnless { next ->
+        next.colors.indices.all { next.colors[it] == submitted[it] }
     }
 
     fun markSubmitted(submission: Submission) {

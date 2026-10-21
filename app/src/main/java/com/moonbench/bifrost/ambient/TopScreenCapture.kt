@@ -32,6 +32,10 @@ internal class TopScreenCapture(
     private var output: VirtualDisplay? = null
     private var reader: ImageReader? = null
     private var active = false
+    val mediaProjection: MediaProjection? get() = projection.takeIf { active }
+    private var videoEnabled = false
+    private var videoOwner = 0L
+    private var frameConsumer: ((IntArray, Int, Int) -> Unit)? = null
     private var lastSampleAt = Long.MIN_VALUE
     private var density = 0
     private var width = 0
@@ -39,7 +43,7 @@ internal class TopScreenCapture(
     private val projectionCallback = object : MediaProjection.Callback() {
         override fun onStop() { fail() }
         override fun onCapturedContentResize(width: Int, height: Int) {
-            if (active) runCatching { resize(width, height) }.onFailure { fail() }
+            if (active && videoEnabled) runCatching { resize(width, height) }.onFailure { fail() }
         }
     }
     private val displayListener = object : DisplayManager.DisplayListener {
@@ -48,27 +52,66 @@ internal class TopScreenCapture(
         override fun onDisplayChanged(displayId: Int) {
             // API 34+ reports captured-content sizes. On Thor 13 use the source
             // display context, never the Activity's lower-panel configuration.
-            if (active && displayId == Display.DEFAULT_DISPLAY && Build.VERSION.SDK_INT < 34)
+            if (active && videoEnabled && displayId == Display.DEFAULT_DISPLAY && Build.VERSION.SDK_INT < 34)
                 runCatching { sourceBounds().let { resize(it.first, it.second) } }.onFailure { fail() }
         }
     }
 
     override fun start(resultCode: Int, grant: Intent) {
+        acquire(resultCode, grant)
+        if (active) resumeVideo(onFrame)
+    }
+
+    /** Acquire once; audio-only sessions need no virtual display or image reader. */
+    fun acquire(resultCode: Int, grant: Intent) {
         check(!active && projection == null)
         active = true
         try {
-            val bounds = sourceBounds()
             projection = context.getSystemService(MediaProjectionManager::class.java)
                 .getMediaProjection(resultCode, grant) ?: error("Capture consent unavailable")
             projection!!.registerCallback(projectionCallback, handler)
             displays.registerDisplayListener(displayListener, handler)
+        } catch (_: RuntimeException) { fail() }
+    }
+
+    /** Effect leases video only. Closing a lease never stops shared audio/consent. */
+    fun videoLease(consumer: (IntArray, Int, Int) -> Unit): AmbientCapture = object : AmbientCapture {
+        private var owner = -1L
+        override fun start(resultCode: Int, grant: Intent) { owner = resumeVideo(consumer) }
+        override fun close() { if (owner == videoOwner) pauseVideo() }
+    }
+
+    private fun resumeVideo(consumer: (IntArray, Int, Int) -> Unit): Long {
+        check(active && !videoEnabled)
+        videoOwner++
+        videoEnabled = true
+        frameConsumer = consumer
+        try {
+            val bounds = sourceBounds()
             val size = grid(bounds.first, bounds.second)
             width = size.first; height = size.second
             reader = createReader(width, height)
-            output = projection!!.createVirtualDisplay("Runelight Ambient", width, height, density,
-                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, reader!!.surface, null, handler)
-                ?: error("Capture display unavailable")
+            lastSampleAt = Long.MIN_VALUE
+            if (output == null) {
+                output = projection!!.createVirtualDisplay("Runelight Ambient", width, height, density,
+                    DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, reader!!.surface, null, handler)
+                    ?: error("Capture display unavailable")
+            } else {
+                // Android 14+ grants permit only one createVirtualDisplay call.
+                output!!.resize(width, height, density)
+                output!!.surface = reader!!.surface
+            }
         } catch (_: RuntimeException) { fail() }
+        return videoOwner
+    }
+
+    private fun pauseVideo() {
+        videoOwner++
+        videoEnabled = false
+        frameConsumer = null
+        output?.surface = null
+        reader?.setOnImageAvailableListener(null, null)
+        reader?.close(); reader = null
     }
 
     private fun sourceBounds(): Pair<Int, Int> {
@@ -96,13 +139,15 @@ internal class TopScreenCapture(
                 try {
                     source.acquireLatestImage()?.use { image ->
                         val now = SystemClock.elapsedRealtime()
-                        if (lastSampleAt != Long.MIN_VALUE && now - lastSampleAt < 100) return@use
+                        // Follow scene changes promptly; the shared writer owns
+                        // the independent 25 Hz hardware limit.
+                        if (lastSampleAt != Long.MIN_VALUE && now - lastSampleAt < 40) return@use
                         val crop = image.cropRect
                         val plane = image.planes[0]
                         val pixels = AmbientSampling.rgba(plane.buffer, plane.rowStride, plane.pixelStride,
                             crop.left, crop.top, crop.width(), crop.height())
                         lastSampleAt = now
-                        onFrame(pixels, crop.width(), crop.height())
+                        frameConsumer?.invoke(pixels, crop.width(), crop.height())
                     }
                 } catch (_: RuntimeException) { fail() }
             }, handler)
@@ -133,6 +178,9 @@ internal class TopScreenCapture(
 
     override fun close() {
         active = false // Fence queued listeners and onStop before releasing.
+        videoOwner++
+        videoEnabled = false
+        frameConsumer = null
         displays.unregisterDisplayListener(displayListener)
         reader?.setOnImageAvailableListener(null, null)
         runCatching { output?.release() }; output = null

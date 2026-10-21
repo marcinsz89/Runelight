@@ -11,14 +11,16 @@ settings data; removing a runtime feature does not authorize deleting user files
 | Component | Ownership / dependencies | Verification |
 |---|---|---|
 | `RunelightActivity`, `ui/ColorLevelTile`, native layout/colors/drawables | Current UI; `runelight_controls` saved configuration; ColorPickerView 2.3.0 and shipped license | Native UI tests, lower/top layout, draft and Stop behavior |
-| `tools/LedController`, `LedFrameState` | Serialized vendor protocol and four-zone output; closed drivers reject late writers | Frame JVM tests, recording-Binder tests, actual Thor output |
+| `tools/LedController`, `LedFrameState`, `LatestValueWriter`, `LedOutputDispatcher` | One paced vendor writer and replaceable complete four-zone frames; closed drivers reject late writers | Frame/queue JVM tests, slow-Binder tests, actual Thor output and combined-load timing |
+| Native `ambient/*` and `audio/*` | Service-owned top capture and playback overlay; shared projection, explicit recorder cleanup, independent saved sound intent | Sampling/envelope JVM tests, capture/recorder lifetime tests, physical color/sound checks |
 | Static, Rainbow, Breath, Pulse animations | Retained plain effects; `LedAnimation`, Android Handler, driver | Output changes, independent levels, Stop cancellation, settled Solid idle |
 | `LEDService`, `LightingRuntime`, `LightingIntentStore` | Retained effect/output ownership, observed runtime and separate durable intent; legacy policy engine removed | Rapid Stop/Start, task removal, output feedback, stale results, interruption/manual resume |
 | `tools/CrashReporter`, basic app/theme/icon resources | Local diagnostics; no external reporting | Redaction/storage review and normal launch |
-| Debug capture probe and separate test-APK tone source | Bounded investigation, no production route or LED output | Capability report; absent from release APK |
+| Debug capture probe and separate test-APK tone source | Bounded capture/audio investigation; tone source can show changing colors and playback-position beats; no route from the native controls | Capability/latency reports; verified absent from release manifest, mapping and DEX |
+| JVM and Android behavior regressions; opt-in vendor timing probe | Keep output coalescing, recorder cleanup, saved-On pause, fast color response and lifecycle checks. Vendor timing runs only with an explicit instrumentation argument and writes modest test colors, then black | 99 JVM tests, scoped Thor runs; manual benchmarks skipped by default; test classes ship only in the separate test APK |
 
-Keep reviewed capture/audio algorithms only after extracting them from legacy
-callers into the new service-owned sessions. The existing `ScreenAnalyser`,
+The retained capture/audio implementation is extracted into the native
+service-owned paths above. The existing `ScreenAnalyser`,
 `AudioAnalyzer` and Ambient animations are not accepted wholesale: their lifecycle,
 held-target smoothing and failure handling still need replacement or correction.
 

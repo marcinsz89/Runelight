@@ -79,7 +79,7 @@ class AmbientSamplingTest {
         smoother.frame(0)
         smoother.target(AmbientColors(red, blue), 60_000)
         val first = smoother.frame(60_033).left ushr 16 and 255
-        assertTrue(first in 1..100)
+        assertTrue("An idle clock must not make the next target snap instantly", first in 1 until 255)
     }
 
     @Test fun responseUsesElapsedTimeRatherThanCaptureCount() {
@@ -91,5 +91,22 @@ class AmbientSamplingTest {
             return smoother.frame(330).left ushr 16 and 255
         }
         assertEquals(output(33), output(110))
+    }
+
+    @Test fun sceneChangeReachesMostOfItsColorWithin100msAndStillFadesToExactBlack() {
+        val smoother = AmbientSmoother()
+        smoother.target(AmbientColors(red, blue), 0)
+        assertTrue((smoother.frame(16).left ushr 16 and 255) in 1 until 255)
+        val bright = smoother.frame(100)
+        assertTrue((bright.left ushr 16 and 255) >= 240)
+        assertTrue((bright.right and 255) >= 240)
+        assertEquals(0, bright.left and 0xffff)
+        assertEquals(0, bright.right and 0xffff00)
+        smoother.target(AmbientColors(black, black), 100)
+        val fading = smoother.frame(200)
+        assertTrue((fading.left ushr 16 and 255) <= 15)
+        assertTrue((fading.right and 255) <= 15)
+        assertEquals(AmbientColors(black, black), smoother.frame(400))
+        assertTrue(smoother.settled)
     }
 }

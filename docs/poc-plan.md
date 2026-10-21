@@ -25,8 +25,10 @@ POC scope discussed:
   halves processes each side separately; full screen shares one representative
   whole-picture color. Favor colorful pixels and lift brightness/saturation while
   preserving true black. Preserve independent Left/Right levels without restarting capture.
-- An independent **React to sound** option on every effect, with one sensitivity
-  control. The effect supplies color/animation; sound modulates intensity.
+- Independent **React to sound** on Ambient, Solid and Rainbow. Breathing/Pulse
+  pause it and dim the tile while retaining the saved On preference. Returning to
+  supported modes restores reaction with valid consent. The effect supplies
+  color/animation; sound modulates intensity. A sensitivity control remains planned.
 - Direct effect/brightness controls, relevant per-effect controls, explicit
   capture source, dark/light appearance, last-used settings and Start/Stop.
 - Service continuation after normal UI dismissal, honest capture/audio/hardware
@@ -281,7 +283,7 @@ Thor; black is physically off; capture revoke/reconnect and UI recreation behave
 predictably. A two-hour Ambient/game session and measured output/CPU behavior
 are required before calling the POC reliable.
 
-### Sound/effects increment — optional reaction on every look
+### Sound/effects increment — independent reaction on supported effects
 
 Relevant findings: **R6, R7, R11, R12**.
 
@@ -289,10 +291,12 @@ Relevant findings: **R6, R7, R11, R12**.
    Use no microphone fallback. Reuse an appropriate valid projection session
    where supported; don't create competing screen/audio ownership.
 2. Normalize/smooth an audio envelope and apply it after the selected effect.
-   Verify all five effects with sound on and off. Switching sound never replaces
+   Verify Ambient/Solid/Rainbow with sound on and off, and Breathing/Pulse with
+   sound paused while retaining saved On. Switching sound never replaces
    the chosen effect, colors, animation phase or capture source.
-3. End nonpositive/error reads, release on every exit, unblock before joining,
-   and reject old recorder callbacks. On audio failure, proposed fallback is the
+3. End failed reads or bounded no-data timeouts, release on every exit,
+   and reject old recorder callbacks. Nonblocking zero reads are temporarily
+   normal; zero-valued PCM is valid silence. On audio failure, fallback is the
    selected base effect with a visible inactive/error sound state.
 4. Reuse the simple Rainbow/Breathing/Pulse behavior, correcting output and
    lifecycle ownership; avoid copying their independent main-thread loops blindly.
@@ -300,6 +304,12 @@ Relevant findings: **R6, R7, R11, R12**.
 Exit: audio failure tests pass without spinning or leaking; actual game audio
 drives intensity on Thor; effect selection remains independent. Record unsupported
 games/capture policies as limitations rather than pretending silence is success.
+
+The [first native sound slice](sound-implementation-2026-10-21.md) now passes
+controlled playback, pause/resume and shared capture checks. Representative game
+audio, sensitivity tuning and long-session acceptance remain pending. Investigate
+the owner's intermittent stuck-white Ambient report after idle OLED cleanup;
+one subsequent cleanup recovered normally, so no fix is claimed.
 
 ### Cleanup pass — after the native UI settles, before POC completion
 
@@ -368,12 +378,13 @@ Preparation is complete: development guidance, build helper, baseline validation
 review/handoff, device matrix and selected design are saved. UI and package-ID
 work is now partially implemented in a separate native Quick tiles entry point.
 See [the native UI slice](native-ui-increment.md) for its scope and checks.
-Solid, Rainbow, Breathing and Pulse reuse the inherited engine; Ambient and the
-independent sound overlay remain unavailable in this internal build. The
+Solid, Rainbow, Breathing and Pulse reuse the inherited effects; top-source
+Ambient and the independent playback sound overlay are now implemented. The
 five-effect POC scope is unchanged. Driver idle/per-zone fixes, plain-effect
 handoff, durable wanted intent and observed first-output/failure state are now
 implemented and tested in bounded runs. Active legacy service policies and four
 startup/API receiver registrations are removed. See the
-[current state report](service-state-2026-10-21.md). Production capture/audio,
+[current state report](service-state-2026-10-21.md) and
+[sound report](sound-implementation-2026-10-21.md). Full capture/audio acceptance,
 remaining legacy component cleanup and the full device acceptance matrix are
 still required; the POC is not complete.

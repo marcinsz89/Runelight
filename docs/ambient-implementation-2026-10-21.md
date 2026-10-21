@@ -86,9 +86,15 @@ These are initial tuning choices, not calibration parity with Bifrost or HDR
 color management. No extra slider/setup is added. Side brightness applies once,
 after this processing, and stays the output ceiling.
 
-The held target advances with elapsed-time exponential smoothing (110 ms time
+The initial held target advances with elapsed-time exponential smoothing (110 ms time
 constant), snaps within half a channel step, then stops scheduling. Brightness
 is applied once by the driver after sampling/smoothing. No sound overlay yet.
+
+The later [sound/latency increment](sound-latency-2026-10-21.md) adds sound and
+reduces color latency: sampling at most every 40 ms, a 35 ms color time constant
+and 16 ms active render ticks. The initial 10 Hz/110 ms figures above describe
+the earlier baseline. A shared latest-frame writer limits actual vendor output
+to 25 Hz, independently of capture or audio; held targets still settle and idle.
 
 ## Validation
 

@@ -88,7 +88,7 @@ internal class AmbientSmoother {
     fun frame(nowMs: Long): AmbientColors {
         val elapsed = previousTime?.let { (nowMs - it).coerceIn(0, 1000) } ?: 33L
         previousTime = nowMs
-        val factor = 1.0 - exp(-elapsed / 110.0)
+        val factor = 1.0 - exp(-elapsed / 35.0)
         for (index in current.indices) {
             val value = current[index] + (target[index] - current[index]) * factor
             current[index] = if (abs(target[index] - value) <= 0.5) target[index].toDouble() else value

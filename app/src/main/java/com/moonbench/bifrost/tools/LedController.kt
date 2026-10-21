@@ -6,8 +6,11 @@ import android.util.Log
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
-class LedController internal constructor(private val pServerBinder: IBinder?) {
-    constructor() : this(findVendorBinder())
+class LedController internal constructor(
+    private val pServerBinder: IBinder?,
+    private val output: LedOutputDispatcher = ImmediateLedOutput
+) {
+    constructor() : this(findVendorBinder(), VendorLedOutput)
 
     companion object {
         private const val TAG = "LedController"
@@ -22,9 +25,12 @@ class LedController internal constructor(private val pServerBinder: IBinder?) {
     }
 
     @Volatile private var closed = false
-    /** Reports Binder submission, not physical LED acknowledgement. Never persisted. */
+    /** Reports completed vendor transactions, not physical LED acknowledgement. */
     @Volatile internal var onOutputResult: ((Boolean) -> Unit)? = null
-    private var hasSubmittedFrame = false
+    private data class Requested(val frame: LedFrameState.Submission, var listener: ((Boolean) -> Unit)?)
+    private var lastRequested: Requested? = null
+    private var requestedVersion = 0L
+    private var completedVersion = -1L
     private val deathRecipient = IBinder.DeathRecipient { onOutputResult?.invoke(false) }
     init {
         runCatching { pServerBinder?.linkToDeath(deathRecipient, 0) }
@@ -97,7 +103,7 @@ class LedController internal constructor(private val pServerBinder: IBinder?) {
     // Legacy API, retaining its existing black-RGB / wire-field behavior.
     fun setBrightness(brightness: Int) = setLedColor(0, 0, 0, brightness)
 
-    /** Caller holds the lock across raw state, final scaling and Binder submission. */
+    /** Caller holds the lock across raw state, scaling and latest-frame replacement. */
     private fun emitFrame() {
         val listener = onOutputResult
         val binder = pServerBinder
@@ -105,26 +111,46 @@ class LedController internal constructor(private val pServerBinder: IBinder?) {
             listener?.invoke(false)
             return
         }
-        val submission = frame.pending()
-        if (submission == null) {
-            if (hasSubmittedFrame) listener?.invoke(true)
+        val submission = frame.snapshot() ?: return
+        if (submission.colors == lastRequested?.frame?.colors) {
+            // A new effect can want the same pending frame. Its callback then
+            // joins that completion instead of waiting forever for another write.
+            lastRequested!!.listener = listener
+            if (completedVersion == requestedVersion) listener?.invoke(true)
             return
         }
+        val request = Requested(submission, listener)
+        lastRequested = request
+        val version = ++requestedVersion
+        output.submit({ transmit(binder, submission.command) }) { accepted ->
+            val result = lock.withLock {
+                if (closed) return@submit
+                if (!accepted) {
+                    if (version == requestedVersion) lastRequested = null
+                    onOutputResult
+                } else {
+                    if (version == requestedVersion) completedVersion = version
+                    frame.markSubmitted(submission)
+                    // Completed frames still acknowledge their own effect even
+                    // when a newer target arrived during the blocking write.
+                    request.listener
+                }
+            }
+            result?.invoke(accepted)
+        }
+    }
+
+    private fun transmit(binder: IBinder, command: String): Boolean {
         val data = Parcel.obtain()
         val reply = Parcel.obtain()
-        try {
-            data.writeStringArray(arrayOf(submission.command, "1"))
-            if (binder.transact(0, data, reply, IBinder.FLAG_ONEWAY)) {
-                // Submission is not a hardware acknowledgement. Failed calls stay retryable.
-                frame.markSubmitted(submission)
-                hasSubmittedFrame = true
-                listener?.invoke(true)
-            } else {
-                listener?.invoke(false)
-            }
+        return try {
+            data.writeStringArray(arrayOf(command, "1"))
+            // The shared worker waits for command completion. One-way writes
+            // would merely move the unbounded queue into the vendor service.
+            binder.transact(0, data, reply, 0)
         } catch (e: Exception) {
             Log.w(TAG, "LED transact failed", e)
-            listener?.invoke(false)
+            false
         } finally {
             data.recycle()
             reply.recycle()

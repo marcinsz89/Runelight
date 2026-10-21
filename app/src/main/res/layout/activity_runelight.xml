@@ -88,8 +88,8 @@
             android:layout_marginStart="6dp"
             android:clickable="true"
             android:focusable="true"
-            android:enabled="false"
-            android:contentDescription="@string/runelight_sound_unavailable">
+            android:stateListAnimator="@animator/runelight_tile_press"
+            android:contentDescription="@string/runelight_sound">
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"

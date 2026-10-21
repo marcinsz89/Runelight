@@ -28,6 +28,8 @@ import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.card.MaterialCardView
 import com.moonbench.bifrost.animations.LedAnimationType
 import com.moonbench.bifrost.ambient.AmbientSamplingMode
+import com.moonbench.bifrost.audio.SoundPolicy
+import com.moonbench.bifrost.audio.SoundPhase
 import com.moonbench.bifrost.services.LEDService
 import com.moonbench.bifrost.services.LightingPhase
 import com.moonbench.bifrost.services.LightingFailure
@@ -66,18 +68,28 @@ class RunelightActivity : AppCompatActivity() {
     }
     private var pendingNotificationStart = false
     private var captureTicket = -1L
+    private var captureUpdatesOnly = false
+    private var pendingAudioStart = false
+    private var soundEnabled = false
     private var ambientSampling = AmbientSamplingMode.EDGES
     private val waitingForCapture: Boolean get() = LEDService.projectionRequests.isPending(captureTicket)
 
     private val captureConsent = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (waitingForCapture && effect == LedAnimationType.AMBIENT) {
+        if (waitingForCapture && (effect == LedAnimationType.AMBIENT || (soundEnabled && SoundPolicy.supports(effect)))) {
             if (result.resultCode == Activity.RESULT_OK && result.data != null) {
-                startLighting(result.resultCode, result.data)
+                if (captureUpdatesOnly && LEDService.isRunning) {
+                    startService(parameterIntent().apply {
+                        action = LEDService.ACTION_UPDATE_PARAMS
+                        putExtra(LEDService.EXTRA_CAPTURE_GRANT, result.data)
+                        putExtra(LEDService.EXTRA_CAPTURE_RESULT, result.resultCode)
+                        putExtra(LEDService.EXTRA_CAPTURE_TICKET, captureTicket)
+                    })
+                } else if (!captureUpdatesOnly) startLighting(result.resultCode, result.data, skipAudioPermission = true)
             } else {
                 LEDService.projectionRequests.cancel(captureTicket)
                 captureTicket = -1L
                 // Cancellation keeps a previously running plain effect usable.
-                LEDService.runningEffect?.takeIf { it != LedAnimationType.AMBIENT }?.let { previous ->
+                LEDService.runningEffect?.takeIf { !captureUpdatesOnly && it != effect }?.let { previous ->
                     effect = previous
                     findViewById<MaterialButtonToggleGroup>(R.id.effectButtons)
                         .check(effects.entries.first { it.value == previous }.key)
@@ -87,6 +99,17 @@ class RunelightActivity : AppCompatActivity() {
                 renderRuntime()
             }
         }
+    }
+    private val audioPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+        if (waitingForCapture) {
+            LEDService.projectionRequests.cancel(captureTicket)
+            captureTicket = -1L
+            val start = pendingAudioStart
+            pendingAudioStart = false
+            if (start) startLighting(skipAudioPermission = true)
+            else if (LEDService.isRunning) enableRunningSound()
+        }
+        renderRuntime()
     }
     private var startingAt = 0L
     private var startError = false
@@ -138,6 +161,9 @@ class RunelightActivity : AppCompatActivity() {
         ambientSampling = AmbientSamplingMode.fromStoredName(prefs.getString("ambientSampling", null)
             ?: if (prefs.getBoolean("wholeScreen", false)) "HALVES" else "EDGES")
         captureTicket = savedInstanceState?.getLong("captureTicket", -1L) ?: -1L
+        captureUpdatesOnly = savedInstanceState?.getBoolean("captureUpdatesOnly") ?: false
+        pendingAudioStart = savedInstanceState?.getBoolean("audioStart") ?: false
+        soundEnabled = prefs.getBoolean("soundEnabled", false)
         speed = prefs.getInt("speed", 50).coerceIn(0, 100)
         leftColor = prefs.getInt("leftColor", leftColor)
         rightColor = prefs.getInt("rightColor", rightColor)
@@ -167,6 +193,7 @@ class RunelightActivity : AppCompatActivity() {
                 previewSuppressed = true
                 clearColorPreview(restore = false)
                 pendingNotificationStart = false
+                pendingAudioStart = false
                 startingAt = 0L
                 startError = false
                 // Dispatch immediately: no Activity-owned debounce that pause
@@ -183,6 +210,26 @@ class RunelightActivity : AppCompatActivity() {
                 startLighting()
             }
         }
+        findViewById<View>(R.id.soundTile).setOnClickListener {
+            if (!SoundPolicy.supports(effect)) return@setOnClickListener
+            soundEnabled = !soundEnabled
+            saveControls()
+            updateParameters()
+            if (soundEnabled) {
+                if (!hasAudioPermission()) requestAudioPermission(startLighting = false)
+                else if (LEDService.isRunning) enableRunningSound()
+            } else if (captureUpdatesOnly) {
+                LEDService.projectionRequests.cancel(captureTicket)
+                captureTicket = -1L
+            }
+            renderRuntime()
+        }
+        status.setOnClickListener {
+            if (soundEnabled && SoundPolicy.supports(effect) && LEDService.isRunning) {
+                if (!hasAudioPermission()) requestAudioPermission(startLighting = false)
+                else enableRunningSound()
+            }
+        }
         findViewById<MaterialButton>(R.id.appearanceButton).setOnClickListener {
             val dark = !prefs.getBoolean("dark", true)
             prefs.edit { putBoolean("dark", dark) }
@@ -197,12 +244,14 @@ class RunelightActivity : AppCompatActivity() {
             if (checked && next != null && next != effect) {
                 LEDService.projectionRequests.cancel(captureTicket)
                 captureTicket = -1L
+                pendingAudioStart = false
                 effect = next
                 editingRight = null
                 findViewById<View>(R.id.quickColorEditor).visibility = View.GONE
                 saveControls()
                 renderControls()
                 if (LEDService.isRunning) startLighting()
+                renderRuntime()
             }
         }
         findViewById<View>(R.id.quickAmbientSampling).setOnClickListener {
@@ -276,6 +325,7 @@ class RunelightActivity : AppCompatActivity() {
         if (editingRight != null) renderColorEditor()
         renderControls()
         LEDService.state.observe(this) { renderRuntime() }
+        LEDService.soundState.observe(this) { renderRuntime() }
     }
 
     override fun onStart() {
@@ -296,6 +346,8 @@ class RunelightActivity : AppCompatActivity() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
+        outState.putBoolean("captureUpdatesOnly", captureUpdatesOnly)
+        outState.putBoolean("audioStart", pendingAudioStart)
         outState.putLong("captureTicket", captureTicket)
         outState.putBoolean("notificationStart", pendingNotificationStart)
         outState.putLong("startingAt", startingAt)
@@ -317,6 +369,7 @@ class RunelightActivity : AppCompatActivity() {
 
     private fun saveControls() {
         prefs.edit {
+            putBoolean("soundEnabled", soundEnabled)
             putString("ambientSampling", ambientSampling.name)
             remove("wholeScreen")
             putString("effect", effect.name)
@@ -328,29 +381,52 @@ class RunelightActivity : AppCompatActivity() {
         }
     }
 
-    private fun startLighting(resultCode: Int = 0, grant: Intent? = null) {
-        if (effect == LedAnimationType.AMBIENT && grant == null) {
-            if (LEDService.runningEffect == LedAnimationType.AMBIENT) {
-                updateParameters()
-                return
-            }
-            if (waitingForCapture) return
-            captureTicket = LEDService.projectionRequests.begin()
-            startError = false
+    private fun hasAudioPermission() = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+
+    private fun requestAudioPermission(startLighting: Boolean) {
+        if (waitingForCapture) return
+        pendingAudioStart = startLighting
+        captureUpdatesOnly = !startLighting
+        captureTicket = LEDService.projectionRequests.begin()
+        audioPermission.launch(Manifest.permission.RECORD_AUDIO)
+    }
+
+    private fun enableRunningSound() {
+        if (!soundEnabled || !SoundPolicy.supports(effect) || !hasAudioPermission()) return
+        if (!LEDService.hasCaptureSession) requestCapture(updateOnly = true)
+        else updateParameters()
+    }
+
+    private fun requestCapture(updateOnly: Boolean) {
+        if (waitingForCapture) return
+        captureUpdatesOnly = updateOnly
+        captureTicket = LEDService.projectionRequests.begin()
+        startError = false
+        renderRuntime()
+        try {
+            val manager = getSystemService(MediaProjectionManager::class.java)
+            val request = if (Build.VERSION.SDK_INT >= 34)
+                manager.createScreenCaptureIntent(MediaProjectionConfig.createConfigForDefaultDisplay())
+            else manager.createScreenCaptureIntent()
+            captureConsent.launch(request)
+        } catch (_: RuntimeException) {
+            LEDService.projectionRequests.cancel(captureTicket)
+            startError = true
             renderRuntime()
-            try {
-                val manager = getSystemService(MediaProjectionManager::class.java)
-                val request = if (Build.VERSION.SDK_INT >= 34)
-                    manager.createScreenCaptureIntent(MediaProjectionConfig.createConfigForDefaultDisplay())
-                else manager.createScreenCaptureIntent()
-                captureConsent.launch(request)
-            } catch (_: RuntimeException) {
-                LEDService.projectionRequests.cancel(captureTicket)
-                startError = true
-                renderRuntime()
-            }
+        }
+    }
+
+    private fun startLighting(resultCode: Int = 0, grant: Intent? = null, skipAudioPermission: Boolean = false) {
+        val wantsAudio = soundEnabled && SoundPolicy.supports(effect)
+        if (wantsAudio && !hasAudioPermission() && !skipAudioPermission) {
+            requestAudioPermission(startLighting = true)
             return
         }
+        if (grant == null && (effect == LedAnimationType.AMBIENT || (wantsAudio && hasAudioPermission())) && !LEDService.hasCaptureSession) {
+            requestCapture(updateOnly = false)
+            return
+        }
+        if (grant == null && LEDService.runningEffect == effect) { updateParameters(); return }
         previewSuppressed = false
         startingAt = SystemClock.elapsedRealtime()
         startError = false
@@ -374,6 +450,7 @@ class RunelightActivity : AppCompatActivity() {
     }
 
     private fun parameterIntent() = Intent(this, LEDService::class.java).apply {
+        putExtra(LEDService.EXTRA_SOUND_ENABLED, soundEnabled)
         putExtra(LEDService.EXTRA_AMBIENT_SAMPLING, ambientSampling.name)
         putExtra("animationColor", leftColor)
         putExtra("animationRightColor", rightColor)
@@ -486,6 +563,21 @@ class RunelightActivity : AppCompatActivity() {
 
     private fun renderRuntime() {
         val runtime = LEDService.state.value
+        val sound = LEDService.soundState.value
+        val supportsSound = SoundPolicy.supports(effect)
+        val soundUnavailable = LEDService.isRunning && sound?.phase in setOf(SoundPhase.NEEDS_CONSENT, SoundPhase.NEEDS_PERMISSION, SoundPhase.FAILED)
+        findViewById<View>(R.id.soundTile).apply {
+            isEnabled = supportsSound
+            alpha = if (supportsSound) 1f else 0.4f
+            isActivated = soundEnabled && (!supportsSound || !LEDService.isRunning || sound?.phase == SoundPhase.ACTIVE)
+            contentDescription = getString(if (!supportsSound) R.string.runelight_sound_paused_description else R.string.runelight_sound_toggle_description,
+                getString(if (soundEnabled) R.string.runelight_on else R.string.runelight_off))
+        }
+        findViewById<TextView>(R.id.soundState).setText(when {
+            soundEnabled && supportsSound && soundUnavailable -> R.string.runelight_paused
+            soundEnabled && supportsSound && LEDService.isRunning && sound?.phase == SoundPhase.STARTING -> R.string.runelight_starting
+            else -> if (soundEnabled) R.string.runelight_on else R.string.runelight_off
+        })
         val active = runtime?.phase == LightingPhase.RUNNING
         if (active && editingRight != null && !colorPreviewSent) requestColorPreview()
         if (lightingTile.isActivated != active) {
@@ -508,7 +600,7 @@ class RunelightActivity : AppCompatActivity() {
             startingAt = 0L
             startError = true
         }
-        val starting = pendingNotificationStart || waitingForCapture || startingAt != 0L || (LEDService.isRunning && !active)
+        val starting = pendingNotificationStart || (waitingForCapture && !captureUpdatesOnly) || startingAt != 0L || (LEDService.isRunning && !active)
         lightingState.setText(when {
             active -> R.string.runelight_on
             starting -> R.string.runelight_starting
@@ -520,6 +612,9 @@ class RunelightActivity : AppCompatActivity() {
             runtime?.failure == LightingFailure.OUTPUT_UNAVAILABLE -> R.string.runelight_output_unavailable
             runtime?.failure == LightingFailure.CAPTURE_LOST -> R.string.runelight_capture_lost
             runtime?.failure == LightingFailure.START_FAILED || startError -> R.string.runelight_start_failed
+            soundEnabled && supportsSound && sound?.phase == SoundPhase.NEEDS_PERMISSION -> R.string.runelight_sound_permission
+            soundEnabled && supportsSound && sound?.phase == SoundPhase.NEEDS_CONSENT -> R.string.runelight_sound_consent
+            soundEnabled && supportsSound && sound?.phase == SoundPhase.FAILED -> R.string.runelight_sound_failed
             runtime?.phase == LightingPhase.STOPPED && !starting && LightingIntentStore(this).wantedRunning -> R.string.runelight_interrupted
             else -> null
         }

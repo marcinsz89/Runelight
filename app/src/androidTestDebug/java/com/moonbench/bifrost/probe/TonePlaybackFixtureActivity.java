@@ -25,21 +25,28 @@ public final class TonePlaybackFixtureActivity extends Activity {
     private final Handler main = new Handler(Looper.getMainLooper());
     private AudioTrack track;
     private long startedAt;
+    private boolean syncPattern;
 
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        syncPattern = getIntent().getBooleanExtra("sync_pattern", false);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         getWindow().setDecorFitsSystemWindows(false);
         setContentView(new View(this) {
             private final Paint paint = new Paint();
             @Override protected void onDraw(Canvas canvas) {
-                paint.setColor(Color.RED);
+                int head = track == null ? 0 : track.getPlaybackHeadPosition();
+                float hue = (head % (44100 * 4)) * 360f / (44100 * 4);
+                paint.setColor(syncPattern ? Color.HSVToColor(new float[] {hue, 1f, 1f}) : Color.RED);
                 canvas.drawRect(0, 0, getWidth() / 2f, getHeight(), paint);
-                paint.setColor(Color.BLUE);
+                paint.setColor(syncPattern ? Color.HSVToColor(new float[] {(hue + 180) % 360, 1f, 1f}) : Color.BLUE);
                 canvas.drawRect(getWidth() / 2f, 0, getWidth(), getHeight(), paint);
                 paint.setColor(Color.WHITE);
                 paint.setTextSize(18);
-                canvas.drawText("Separate-UID playback fixture", 10, 24, paint);
+                canvas.drawText(syncPattern ? "Sync check: changing picture + 2 beats/sec" : "Separate-UID playback fixture", 10, 24, paint);
+                if (syncPattern && head % (44100 / 2) < 44100 / 10)
+                    canvas.drawCircle(getWidth() / 2f, getHeight() / 2f, getHeight() * .08f, paint);
+                if (syncPattern && track != null) postInvalidateOnAnimation();
             }
         });
         try {
@@ -50,7 +57,8 @@ public final class TonePlaybackFixtureActivity extends Activity {
             short[] data = new short[rate * 4];
             for (int index = 0; index < data.length; index++) {
                 int second = index / rate;
-                int amplitude = second == 0 ? 2200 : second == 1 ? 6600 : 0;
+                int amplitude = syncPattern ? (index % (rate / 2) < rate / 10 ? 6600 : 0)
+                    : second == 0 ? 2200 : second == 1 ? 6600 : 0;
                 data[index] = (short) (amplitude * Math.sin(2 * Math.PI * 440 * index / rate));
             }
             AudioAttributes attributes = new AudioAttributes.Builder()
@@ -74,6 +82,7 @@ public final class TonePlaybackFixtureActivity extends Activity {
                             .put("attributes", attributes.toString()).put("state", track.getState())
                             .put("play_state", track.getPlayState()).put("playback_head", track.getPlaybackHeadPosition())
                             .put("session_id", track.getAudioSessionId()).put("started_elapsed_ms", startedAt)
+                            .put("sync_pattern", syncPattern)
                             .put("updated_elapsed_ms", SystemClock.elapsedRealtime()));
                     } catch (Exception ignored) { /* Observation must not crash playback. */ }
                     main.postDelayed(this, 500);

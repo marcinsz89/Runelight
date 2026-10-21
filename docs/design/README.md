@@ -18,7 +18,8 @@ Its two preview rings represent desired colors, not hardware telemetry.
 
 A first [native UI slice](../native-ui-increment.md) now implements the Quick
 tiles direction. Its [Thor screenshot](native-quick-tiles.png) shows real native
-controls. A later [top Ambient slice](../ambient-implementation-2026-10-21.md) now enables capture; sound remains unavailable.
+controls. Later [Ambient](../ambient-implementation-2026-10-21.md) and
+[sound](../sound-implementation-2026-10-21.md) slices enable native capture and playback reaction.
 The native layout now supersedes the original mockup's redundant Current look
 tile: sound sits beside Lighting, followed by the effect strip and paired
 Left/Right color-level controls. The global brightness slider has been removed.
@@ -37,7 +38,7 @@ The HTML/image above preserve the earlier proposal.
 - Active Lighting and sound tiles use a full-surface violet gradient with white
   text; inactive tiles use the normal light/dark card surface. Keep explicit
   state text as well as color. Lighting highlights only after the running state
-  is observed; sound remains inactive while unavailable in the current build.
+  is observed; sound indicates actual reaction or the saved armed preference.
   The whole sound tile is the toggle; there is no separate switch inside it.
 - Backgrounds use a restrained violet-to-neutral gradient. Inactive surfaces use
   shallow diagonal shading and fine edges; light mode has its own high-contrast
@@ -125,6 +126,10 @@ that conditional visibility during Android implementation; the table above is
 the intended behavior. Users never need to name/save a preset to change a setting.
 
 ## Sound is an overlay
+
+Sound is supported on Ambient, Solid and Rainbow. Breathing/Pulse dim and disable
+its tile, preserving the saved On/Off preference; returning restores it when the
+service's capture session is still valid. No extra switch is nested inside the tile.
 
 The selected look remains the source of color and animation. The sound envelope
 modulates its intensity; each side's brightness remains its output ceiling. Black

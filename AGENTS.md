@@ -88,13 +88,18 @@
 - One active effect owns output; one serialized driver applies complete per-zone
   frames. Preserve both sticks, both zones and distinct colors when batching.
   Static output becomes idle after settling; suppress unchanged final frames.
+- Color and sound share one paced vendor writer: one in-flight command and one
+  replaceable latest frame, across controller lifetimes. Wait for vendor command
+  completion off the main thread; never enqueue every update with one-way Binder.
 - Plain-effect handoff cancels old callbacks and holds output until the new
   effect supplies a frame. Explicit Stop clears/closes output; closed drivers
   cannot write into a replacement service session.
 - Keep the latest sampled target and let smoothing converge even if new input
   frames are identical. True black stays zero through brightness/audio processing.
-- Sound modulates the selected effect's intensity; it is not a separate effect
-  family. Request playback permissions only when needed. Failed reads must end
+- Sound modulates Ambient, Solid and Rainbow intensity; it is not a separate
+  effect family. Breathing/Pulse pause audio and dim/disable the sound tile while
+  retaining its saved On preference. Returning to a supported mode reuses valid
+  service-owned capture consent. Request playback permissions only when needed. Failed reads must end
   cleanly; release/unblock before joining; no urgent-priority retry spin.
 - Capture backend/source selection is independent of the UI's display. Use a
   source the backend actually supports; expose unavailable combinations clearly.
